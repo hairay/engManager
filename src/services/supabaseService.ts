@@ -319,7 +319,7 @@ ALTER TABLE public.game_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deleted_ids ENABLE ROW LEVEL SECURITY;
 
 -- 簡易個人專屬資料庫方案 (僅限持有 Anon Key 的客戶端存取)
--- 使用 DROP POLICY IF EXISTS 讓整份腳本可重複執行 ?
+-- 政策一律先 DROP 再 CREATE，整份腳本可安全重複執行
 -- (CREATE POLICY 沒有 IF NOT EXISTS，直接重跑會報 42710 policy already exists)
 DROP POLICY IF EXISTS "Allow anon access on words" ON public.words;
 CREATE POLICY "Allow anon access on words" ON public.words FOR ALL TO anon USING (true) WITH CHECK (true);
