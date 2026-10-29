@@ -319,9 +319,15 @@ ALTER TABLE public.game_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deleted_ids ENABLE ROW LEVEL SECURITY;
 
 -- 簡易個人專屬資料庫方案 (僅限持有 Anon Key 的客戶端存取)
+-- 使用 DROP POLICY IF EXISTS 讓整份腳本可重複執行 ?
+-- (CREATE POLICY 沒有 IF NOT EXISTS，直接重跑會報 42710 policy already exists)
+DROP POLICY IF EXISTS "Allow anon access on words" ON public.words;
 CREATE POLICY "Allow anon access on words" ON public.words FOR ALL TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anon access on sentences" ON public.sentences;
 CREATE POLICY "Allow anon access on sentences" ON public.sentences FOR ALL TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anon access on game_records" ON public.game_records;
 CREATE POLICY "Allow anon access on game_records" ON public.game_records FOR ALL TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anon access on deleted_ids" ON public.deleted_ids;
 CREATE POLICY "Allow anon access on deleted_ids" ON public.deleted_ids FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- 生產環境推薦 (搭配 Supabase Auth 使用者隔離):
