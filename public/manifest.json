@@ -1,0 +1,19 @@
+{
+  "name": "英語管家 EngManager",
+  "short_name": "EngManager",
+  "description": "英文單字與句子雲端學習與遊戲複習系統",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
