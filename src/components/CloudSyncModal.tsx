@@ -12,33 +12,33 @@ interface CloudSyncModalProps {
   onSyncComplete?: () => void;
 }
 
-export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
-  isOpen,
+const CloudSyncModalContent: React.FC<Omit<CloudSyncModalProps, 'isOpen'>> = ({
   onClose,
   cloudConfig,
   onUpdateCloudConfig,
   onSyncComplete,
 }) => {
-  const [enabled, setEnabled] = useState(cloudConfig.enabled);
-  const [supabaseUrl, setSupabaseUrl] = useState(cloudConfig.supabaseUrl);
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState(cloudConfig.supabaseAnonKey);
-  const [intervalSeconds, setIntervalSeconds] = useState(cloudConfig.syncIntervalSeconds);
+  const [enabled, setEnabled] = useState(cloudConfig.enabled || Boolean(cloudConfig.supabaseUrl));
+  const [supabaseUrl, setSupabaseUrl] = useState(cloudConfig.supabaseUrl || '');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(cloudConfig.supabaseAnonKey || '');
+  const [intervalSeconds, setIntervalSeconds] = useState(cloudConfig.syncIntervalSeconds || 15);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showSQL, setShowSQL] = useState(false);
   const [copiedSQL, setCopiedSQL] = useState(false);
 
-  if (!isOpen) return null;
-
   const handleSupabaseSync = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSyncing(true);
     setMessage(null);
 
+    const hasCredentials = Boolean(supabaseUrl.trim()) && Boolean(supabaseAnonKey.trim());
+    const isNowEnabled = enabled && hasCredentials;
+
     const updatedConfig: CloudConfig = {
       ...cloudConfig,
-      enabled,
+      enabled: isNowEnabled,
       supabaseUrl: supabaseUrl.trim(),
       supabaseAnonKey: supabaseAnonKey.trim(),
       syncIntervalSeconds: Math.max(10, intervalSeconds),
@@ -48,12 +48,12 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
     resetSupabaseClient();
     onUpdateCloudConfig(updatedConfig);
 
-    if (enabled) {
+    if (isNowEnabled) {
       const result = await syncWithCloud();
       setMessage({ text: result.message, type: result.success ? 'success' : 'error' });
       if (result.success && onSyncComplete) onSyncComplete();
     } else {
-      setMessage({ text: '已改為本機離線模式 (資料儲存於瀏覽器 LocalStorage)', type: 'success' });
+      setMessage({ text: '已設定為本機離線模式 (資料儲存於瀏覽器 LocalStorage)', type: 'success' });
     }
 
     setIsSyncing(false);
@@ -93,79 +93,118 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
               2. 到專案的 <span className="font-bold">SQL Editor</span> 貼上並執行下方的「SQL 建表腳本」。
             </p>
             <p className="leading-relaxed">
-              3. 到 <span className="font-bold">Settings → API</span> 複製 <span className="font-bold">Project URL</span> 與 <span className="font-bold">anon public key</span> 填入下方儲存，系統會每 {Math.max(10, intervalSeconds)} 秒自動雙向同步單字、句子與遊戲記錄！
+              3. 到 <span className="font-bold">Settings → API</span> 複製 <span className="font-bold">Project URL</span> 與 <span className="font-bold">anon public key</span> 貼在下方即可開始同步！
             </p>
           </div>
 
-          {/* 啟用開關 */}
-          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50">
+          {/* 啟用開關 (全卡片點擊切換) */}
+          <div
+            onClick={() => setEnabled((prev) => !prev)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setEnabled((prev) => !prev);
+              }
+            }}
+            className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
+              enabled
+                ? 'bg-sky-50/80 border-sky-300 ring-1 ring-sky-300'
+                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+            }`}
+          >
             <div>
-              <div className="font-semibold text-xs text-slate-800">啟用 Supabase 遠端資料庫</div>
-              <div className="text-[11px] text-slate-500">關閉時所有資料僅保存於本機</div>
+              <div className="font-bold text-xs text-slate-800 flex items-center space-x-2">
+                <span>啟用 Supabase 遠端資料庫</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    enabled ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {enabled ? '已啟用' : '已停用'}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {enabled ? '雲端資料庫雙向同步中（點擊此處可切換為本機模式）' : '點擊此卡片即可開啟雲端同步'}
+              </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="sr-only peer"
+
+            {/* Switch Toggle */}
+            <div
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                enabled ? 'bg-sky-600' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  enabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-            </label>
+            </div>
           </div>
 
-          {enabled && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Supabase Project URL
-                </label>
-                <input
-                  type="url"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
-                  placeholder="https://xyzcompany.supabase.co"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 outline-none"
-                  required={enabled}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Supabase anon API Key (公開金鑰)
-                </label>
-                <input
-                  type="password"
-                  value={supabaseAnonKey}
-                  onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 outline-none font-mono"
-                  required={enabled}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  自動同步間隔 (秒，最短 10 秒)
-                </label>
-                <input
-                  type="number"
-                  min={10}
-                  max={600}
-                  step={5}
-                  value={intervalSeconds}
-                  onChange={(e) => setIntervalSeconds(Number(e.target.value) || 15)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 outline-none"
-                />
-              </div>
-
-              {cloudConfig.lastSyncTime && (
-                <div className="text-[11px] text-slate-400">
-                  上次同步：{new Date(cloudConfig.lastSyncTime).toLocaleString('zh-TW')} · 狀態：{cloudConfig.syncStatus}
-                </div>
-              )}
+          {/* 輸入欄位 (常態顯示，方便直接填寫或修改) */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Supabase Project URL (專案網址)
+              </label>
+              <input
+                type="url"
+                value={supabaseUrl}
+                onChange={(e) => {
+                  setSupabaseUrl(e.target.value);
+                  if (e.target.value.trim() && !enabled) {
+                    setEnabled(true);
+                  }
+                }}
+                placeholder="https://xyzcompany.supabase.co"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 outline-none"
+                required={enabled}
+              />
             </div>
-          )}
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Supabase anon API Key (公開金鑰)
+              </label>
+              <input
+                type="password"
+                value={supabaseAnonKey}
+                onChange={(e) => {
+                  setSupabaseAnonKey(e.target.value);
+                  if (e.target.value.trim() && !enabled) {
+                    setEnabled(true);
+                  }
+                }}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 outline-none font-mono"
+                required={enabled}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                自動同步間隔 (秒，最短 10 秒)
+              </label>
+              <input
+                type="number"
+                min={10}
+                max={600}
+                step={5}
+                value={intervalSeconds}
+                onChange={(e) => setIntervalSeconds(Number(e.target.value) || 15)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 outline-none"
+              />
+            </div>
+
+            {cloudConfig.lastSyncTime && (
+              <div className="text-[11px] text-slate-400">
+                上次同步：{new Date(cloudConfig.lastSyncTime).toLocaleString('zh-TW')} · 狀態：{cloudConfig.syncStatus}
+              </div>
+            )}
+          </div>
 
           {/* SQL Accordion */}
           <div className="flex items-center justify-between pt-1">
@@ -228,6 +267,11 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
       </div>
     </div>
   );
+};
+
+export const CloudSyncModal: React.FC<CloudSyncModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return <CloudSyncModalContent key={props.isOpen ? 'open' : 'closed'} {...props} />;
 };
 
 export default CloudSyncModal;
