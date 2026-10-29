@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Pronunciation Test */}
             <button
               onClick={() => SpeechService.speak('Actions speak louder than words.')}
-              title="測試英文發音 (Web Speech API)"
+              title={`測試英文發音 (當前語音: ${SpeechService.getCurrentVoiceName()})`}
               className="p-2 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center text-xs space-x-1"
             >
               <Sparkles className="w-4 h-4" />
