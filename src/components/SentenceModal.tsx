@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { Sentence, WordCategory } from '../types';
 import { WORD_CATEGORY_LABELS, LEVEL_LABELS } from '../types';
 import { Save, X, Star } from 'lucide-react';
@@ -13,35 +13,19 @@ interface SentenceModalProps {
 
 const WORD_CATEGORIES = Object.keys(WORD_CATEGORY_LABELS) as WordCategory[];
 
-export const SentenceModal: React.FC<SentenceModalProps> = ({
-  isOpen,
+const SentenceModalContent: React.FC<Omit<SentenceModalProps, 'isOpen'>> = ({
   editingSentence,
   onClose,
   onSubmit,
   onDelete,
 }) => {
-  const [english, setEnglish] = useState('');
-  const [chinese, setChinese] = useState('');
-  const [category, setCategory] = useState<WordCategory>('daily');
-  const [level, setLevel] = useState(1);
-  const [favorite, setFavorite] = useState(false);
-  const [note, setNote] = useState('');
+  const [english, setEnglish] = useState(editingSentence?.english || '');
+  const [chinese, setChinese] = useState(editingSentence?.chinese || '');
+  const [category, setCategory] = useState<WordCategory>(editingSentence?.category || 'daily');
+  const [level, setLevel] = useState(editingSentence?.level || 1);
+  const [favorite, setFavorite] = useState(editingSentence?.favorite || false);
+  const [note, setNote] = useState(editingSentence?.note || '');
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      const s = editingSentence;
-      setEnglish(s?.english || '');
-      setChinese(s?.chinese || '');
-      setCategory(s?.category || 'daily');
-      setLevel(s?.level || 1);
-      setFavorite(s?.favorite || false);
-      setNote(s?.note || '');
-      setError(null);
-    }
-  }, [isOpen, editingSentence]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,3 +204,10 @@ export const SentenceModal: React.FC<SentenceModalProps> = ({
     </div>
   );
 };
+
+export const SentenceModal: React.FC<SentenceModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return <SentenceModalContent key={props.editingSentence?.id ?? 'new'} {...props} />;
+};
+
+export default SentenceModal;

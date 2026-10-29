@@ -20,6 +20,20 @@ export class LoggerService {
     };
   }
 
+  private static persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private static schedulePersist(): void {
+    if (this.persistTimer !== null) return;
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      try {
+        localStorage.setItem('engmanager_debug_logs', JSON.stringify(this.entries.slice(-300)));
+      } catch {
+        // ignore storage quota errors
+      }
+    }, 500);
+  }
+
   private static addLog(level: LogLevel, module: string, message: string): void {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
@@ -28,14 +42,7 @@ export class LoggerService {
       message,
     };
     this.entries = [...this.entries.slice(-this.maxEntries + 1), entry];
-    try {
-      const raw = localStorage.getItem('engmanager_debug_logs');
-      const stored: LogEntry[] = raw ? JSON.parse(raw) : [];
-      stored.push(entry);
-      localStorage.setItem('engmanager_debug_logs', JSON.stringify(stored.slice(-300)));
-    } catch {
-      // ignore storage quota errors
-    }
+    this.schedulePersist();
     this.listeners.forEach((l) => l([...this.entries]));
   }
 
@@ -56,6 +63,10 @@ export class LoggerService {
   }
 
   public static clear(): void {
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
     this.entries = [];
     localStorage.removeItem('engmanager_debug_logs');
     this.listeners.forEach((l) => l([]));

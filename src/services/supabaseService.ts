@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { StorageService } from './storageService';
 import { SyncUtils } from './syncUtils';
 import { LoggerService } from './loggerService';
+import type { Word, Sentence, GameRecord } from '../types';
 
 let supabaseClient: SupabaseClient | null = null;
 
@@ -19,6 +20,53 @@ export const getSupabaseClient = (): SupabaseClient | null => {
 export const resetSupabaseClient = () => {
   supabaseClient = null;
 };
+
+/** 容錯處理：相容全小寫或駝峰命名的遠端資料庫欄位 */
+const normalizeWord = (row: any): Word => ({
+  id: String(row.id),
+  english: String(row.english || ''),
+  phonetic: String(row.phonetic || ''),
+  partOfSpeech: row.partOfSpeech || row.partofspeech || 'other',
+  meaning: String(row.meaning || ''),
+  exampleSentence: String(row.exampleSentence || row.examplesentence || ''),
+  exampleTranslation: String(row.exampleTranslation || row.exampletranslation || ''),
+  category: row.category || 'other',
+  level: Number(row.level) || 1,
+  favorite: Boolean(row.favorite),
+  note: String(row.note || ''),
+  reviewCount: Number(row.reviewCount ?? row.reviewcount) || 0,
+  correctCount: Number(row.correctCount ?? row.correctcount) || 0,
+  lastReviewedAt: row.lastReviewedAt || row.lastreviewedat || null,
+  createdAt: row.createdAt || row.createdat || new Date().toISOString(),
+  updatedAt: row.updatedAt || row.updatedat || new Date().toISOString(),
+});
+
+const normalizeSentence = (row: any): Sentence => ({
+  id: String(row.id),
+  english: String(row.english || ''),
+  chinese: String(row.chinese || ''),
+  category: row.category || 'other',
+  level: Number(row.level) || 1,
+  favorite: Boolean(row.favorite),
+  note: String(row.note || ''),
+  reviewCount: Number(row.reviewCount ?? row.reviewcount) || 0,
+  correctCount: Number(row.correctCount ?? row.correctcount) || 0,
+  lastReviewedAt: row.lastReviewedAt || row.lastreviewedat || null,
+  createdAt: row.createdAt || row.createdat || new Date().toISOString(),
+  updatedAt: row.updatedAt || row.updatedat || new Date().toISOString(),
+});
+
+const normalizeRecord = (row: any): GameRecord => ({
+  id: String(row.id),
+  game: row.game,
+  score: Number(row.score) || 0,
+  total: Number(row.total) || 0,
+  durationSec: Number(row.durationSec ?? row.durationsec) || 0,
+  date: String(row.date || ''),
+  time: String(row.time || ''),
+  createdAt: row.createdAt || row.createdat || new Date().toISOString(),
+  updatedAt: row.updatedAt || row.updatedat || new Date().toISOString(),
+});
 
 /**
  * 與 Supabase 遠端資料庫進行雙向智慧同步：
@@ -38,22 +86,25 @@ export const syncWithCloud = async (): Promise<{ success: boolean; message: stri
     if (!client) throw new Error('Supabase client error');
 
     // 1. Fetch Cloud Data
-    const { data: cloudWords, error: wordsErr } = await client.from('words').select('*');
+    const { data: rawCloudWords, error: wordsErr } = await client.from('words').select('*');
     if (wordsErr) throw wordsErr;
 
-    const { data: cloudSentences, error: sentencesErr } = await client.from('sentences').select('*');
+    const { data: rawCloudSentences, error: sentencesErr } = await client.from('sentences').select('*');
     if (sentencesErr) throw sentencesErr;
 
-    const { data: cloudRecords, error: recordsErr } = await client.from('game_records').select('*');
+    const { data: rawCloudRecords, error: recordsErr } = await client.from('game_records').select('*');
     if (recordsErr) throw recordsErr;
 
+    const cloudWords = (rawCloudWords || []).map(normalizeWord);
+    const cloudSentences = (rawCloudSentences || []).map(normalizeSentence);
+    const cloudRecords = (rawCloudRecords || []).map(normalizeRecord);
+
     // Auto-Eviction: 本機只有未編輯的示範資料且雲端已有真實資料時，先清掉示範資料
-    const cloudHasContent = (Array.isArray(cloudWords) && cloudWords.length > 0) ||
-                            (Array.isArray(cloudSentences) && cloudSentences.length > 0);
+    const cloudHasContent = cloudWords.length > 0 || cloudSentences.length > 0;
     if (cloudHasContent && StorageService.isDemoDataOnly()) {
       const demoIds = StorageService.getDemoIds();
-      const cloudIsAlsoDemo = Array.isArray(cloudWords) && cloudWords.length > 0 &&
-        cloudWords.every((w: any) => demoIds.wordIds.has(w.id));
+      const cloudIsAlsoDemo =
+        cloudWords.length > 0 && cloudWords.every((w) => demoIds.wordIds.has(w.id));
       if (!cloudIsAlsoDemo) {
         StorageService.clearDemoData();
       }
@@ -69,9 +120,9 @@ export const syncWithCloud = async (): Promise<{ success: boolean; message: stri
     const delRecordIds = new Set(StorageService.getDeletedRecordIds());
 
     // 3. Merge (最新時間戳優先)
-    const mergedWords = SyncUtils.mergeByIdSmart(localWords, cloudWords || [], delWordIds);
-    const mergedSentences = SyncUtils.mergeByIdSmart(localSentences, cloudSentences || [], delSentenceIds);
-    const mergedRecords = SyncUtils.mergeByIdSmart(localRecords, cloudRecords || [], delRecordIds);
+    const mergedWords = SyncUtils.mergeByIdSmart(localWords, cloudWords, delWordIds);
+    const mergedSentences = SyncUtils.mergeByIdSmart(localSentences, cloudSentences, delSentenceIds);
+    const mergedRecords = SyncUtils.mergeByIdSmart(localRecords, cloudRecords, delRecordIds);
 
     // 4. Update Local Storage if changed
     if (!SyncUtils.isSameList(localWords, mergedWords)) {
@@ -84,18 +135,26 @@ export const syncWithCloud = async (): Promise<{ success: boolean; message: stri
       StorageService.saveGameRecords(mergedRecords);
     }
 
-    // 5. Delete Tombstoned items from Supabase
+    // 5. Delete Tombstoned items from Supabase (分批防 URL 長度溢出)
+    const deleteInBatches = async (table: string, ids: string[]) => {
+      const batchSize = 50;
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        await client.from(table).delete().in('id', batch);
+      }
+    };
+
     const delWordsArr = Array.from(delWordIds);
     if (delWordsArr.length > 0) {
-      await client.from('words').delete().in('id', delWordsArr);
+      await deleteInBatches('words', delWordsArr);
     }
     const delSentencesArr = Array.from(delSentenceIds);
     if (delSentencesArr.length > 0) {
-      await client.from('sentences').delete().in('id', delSentencesArr);
+      await deleteInBatches('sentences', delSentencesArr);
     }
     const delRecordsArr = Array.from(delRecordIds);
     if (delRecordsArr.length > 0) {
-      await client.from('game_records').delete().in('id', delRecordsArr);
+      await deleteInBatches('game_records', delRecordsArr);
     }
 
     // 6. Push merged data back (Upsert)
@@ -138,19 +197,19 @@ CREATE TABLE IF NOT EXISTS public.words (
   id TEXT PRIMARY KEY,
   english TEXT NOT NULL,
   phonetic TEXT,
-  partOfSpeech TEXT NOT NULL DEFAULT 'other',
+  "partOfSpeech" TEXT NOT NULL DEFAULT 'other',
   meaning TEXT NOT NULL,
-  exampleSentence TEXT,
-  exampleTranslation TEXT,
+  "exampleSentence" TEXT,
+  "exampleTranslation" TEXT,
   category TEXT NOT NULL DEFAULT 'other',
   level INT NOT NULL DEFAULT 1,
   favorite BOOLEAN NOT NULL DEFAULT FALSE,
   note TEXT,
-  reviewCount INT NOT NULL DEFAULT 0,
-  correctCount INT NOT NULL DEFAULT 0,
-  lastReviewedAt TIMESTAMPTZ,
-  createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  "reviewCount" INT NOT NULL DEFAULT 0,
+  "correctCount" INT NOT NULL DEFAULT 0,
+  "lastReviewedAt" TIMESTAMPTZ,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2. 英文句子表
@@ -162,11 +221,11 @@ CREATE TABLE IF NOT EXISTS public.sentences (
   level INT NOT NULL DEFAULT 1,
   favorite BOOLEAN NOT NULL DEFAULT FALSE,
   note TEXT,
-  reviewCount INT NOT NULL DEFAULT 0,
-  correctCount INT NOT NULL DEFAULT 0,
-  lastReviewedAt TIMESTAMPTZ,
-  createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  "reviewCount" INT NOT NULL DEFAULT 0,
+  "correctCount" INT NOT NULL DEFAULT 0,
+  "lastReviewedAt" TIMESTAMPTZ,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 3. 遊戲複習記錄表
@@ -175,11 +234,11 @@ CREATE TABLE IF NOT EXISTS public.game_records (
   game TEXT NOT NULL,
   score INT NOT NULL DEFAULT 0,
   total INT NOT NULL DEFAULT 0,
-  durationSec INT NOT NULL DEFAULT 0,
+  "durationSec" INT NOT NULL DEFAULT 0,
   date DATE NOT NULL,
   time TEXT,
-  createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 開啟 Row Level Security (RLS)

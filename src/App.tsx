@@ -47,11 +47,11 @@ const csvEscape = (value: unknown): string => {
 export function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'words' | 'sentences' | 'games' | 'history'>('dashboard');
 
-  // Core App Data
-  const [words, setWords] = useState<Word[]>([]);
-  const [sentences, setSentences] = useState<Sentence[]>([]);
-  const [gameRecords, setGameRecords] = useState<GameRecord[]>([]);
-  const [cloudConfig, setCloudConfig] = useState<CloudConfig>(StorageService.getCloudConfig());
+  // Core App Data (直接由 StorageService 初始化，免去首次渲染空閃爍與 mount 時同步 setState)
+  const [words, setWords] = useState<Word[]>(() => StorageService.getWords());
+  const [sentences, setSentences] = useState<Sentence[]>(() => StorageService.getSentences());
+  const [gameRecords, setGameRecords] = useState<GameRecord[]>(() => StorageService.getGameRecords());
+  const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => StorageService.getCloudConfig());
 
   // Modals
   const [isWordModalOpen, setIsWordModalOpen] = useState(false);
@@ -92,7 +92,6 @@ export function App() {
     LoggerService.hydrateFromStorage();
     LoggerService.info('App', '英語管家 EngManager 應用啟動');
     SpeechService.warmUp();
-    loadAllData();
     triggerCloudSync();
 
     const interval = setInterval(
@@ -103,7 +102,7 @@ export function App() {
     );
 
     return () => clearInterval(interval);
-  }, [loadAllData, triggerCloudSync, cloudConfig.syncIntervalSeconds]);
+  }, [triggerCloudSync, cloudConfig.syncIntervalSeconds]);
 
   /* ---------------- Word CRUD ---------------- */
   const handleSaveWord = (data: Omit<Word, 'id' | 'createdAt' | 'updatedAt'>) => {

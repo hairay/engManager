@@ -10,13 +10,14 @@ export class SyncUtils {
     cloudList: T[],
     deletedIds: Set<string>
   ): T[] {
+    const cloudMap = new Map(cloudList.map((item) => [item.id, item]));
     const localMap = new Map(localList.map((item) => [item.id, item]));
     const result: T[] = [];
 
     // 先處理本機項目
     for (const local of localList) {
       if (deletedIds.has(local.id)) continue;
-      const cloud = cloudList.find((c) => c.id === local.id);
+      const cloud = cloudMap.get(local.id);
       if (cloud) {
         result.push(this.pickByTimestamp(local, cloud));
       } else {

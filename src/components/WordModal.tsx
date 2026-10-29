@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { Word, WordCategory, PartOfSpeech } from '../types';
 import {
   WORD_CATEGORY_LABELS,
@@ -18,43 +18,23 @@ interface WordModalProps {
 const WORD_CATEGORIES = Object.keys(WORD_CATEGORY_LABELS) as WordCategory[];
 const PARTS_OF_SPEECH = Object.keys(PART_OF_SPEECH_LABELS) as PartOfSpeech[];
 
-export const WordModal: React.FC<WordModalProps> = ({
-  isOpen,
+const WordModalContent: React.FC<Omit<WordModalProps, 'isOpen'>> = ({
   editingWord,
   onClose,
   onSubmit,
   onDelete,
 }) => {
-  const [english, setEnglish] = useState('');
-  const [phonetic, setPhonetic] = useState('');
-  const [partOfSpeech, setPartOfSpeech] = useState<PartOfSpeech>('noun');
-  const [meaning, setMeaning] = useState('');
-  const [exampleSentence, setExampleSentence] = useState('');
-  const [exampleTranslation, setExampleTranslation] = useState('');
-  const [category, setCategory] = useState<WordCategory>('daily');
-  const [level, setLevel] = useState(1);
-  const [favorite, setFavorite] = useState(false);
-  const [note, setNote] = useState('');
+  const [english, setEnglish] = useState(editingWord?.english || '');
+  const [phonetic, setPhonetic] = useState(editingWord?.phonetic || '');
+  const [partOfSpeech, setPartOfSpeech] = useState<PartOfSpeech>(editingWord?.partOfSpeech || 'noun');
+  const [meaning, setMeaning] = useState(editingWord?.meaning || '');
+  const [exampleSentence, setExampleSentence] = useState(editingWord?.exampleSentence || '');
+  const [exampleTranslation, setExampleTranslation] = useState(editingWord?.exampleTranslation || '');
+  const [category, setCategory] = useState<WordCategory>(editingWord?.category || 'daily');
+  const [level, setLevel] = useState(editingWord?.level || 1);
+  const [favorite, setFavorite] = useState(editingWord?.favorite || false);
+  const [note, setNote] = useState(editingWord?.note || '');
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      const w = editingWord;
-      setEnglish(w?.english || '');
-      setPhonetic(w?.phonetic || '');
-      setPartOfSpeech(w?.partOfSpeech || 'noun');
-      setMeaning(w?.meaning || '');
-      setExampleSentence(w?.exampleSentence || '');
-      setExampleTranslation(w?.exampleTranslation || '');
-      setCategory(w?.category || 'daily');
-      setLevel(w?.level || 1);
-      setFavorite(w?.favorite || false);
-      setNote(w?.note || '');
-      setError(null);
-    }
-  }, [isOpen, editingWord]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,3 +269,10 @@ export const WordModal: React.FC<WordModalProps> = ({
     </div>
   );
 };
+
+export const WordModal: React.FC<WordModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return <WordModalContent key={props.editingWord?.id ?? 'new'} {...props} />;
+};
+
+export default WordModal;

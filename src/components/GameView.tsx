@@ -29,7 +29,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
 };
 
 const normToken = (t: string): string =>
-  t.toLowerCase().replace(/[^a-z']/g, '');
+  t.toLowerCase().replace(/[^a-z0-9']/g, '');
 
 const stripPunct = (t: string): string => t.replace(/[^A-Za-z]/g, '');
 
@@ -219,6 +219,16 @@ export const GameView: React.FC<GameViewProps> = ({
             distractors.push(d);
           }
         }
+        if (distractors.length < 3) {
+          const FALLBACK_WORDS = ['always', 'usually', 'sometimes', 'already', 'almost', 'enough', 'together', 'important', 'different', 'possible'];
+          for (const d of shuffle(FALLBACK_WORDS)) {
+            if (distractors.length >= 3) break;
+            if (!seen.has(d)) {
+              seen.add(d);
+              distractors.push(d);
+            }
+          }
+        }
         const options = shuffle([answer, ...distractors]);
         questions.push({
           sentence,
@@ -394,9 +404,10 @@ export const GameView: React.FC<GameViewProps> = ({
     if (!scrambleQ) return;
     const seq = placedOverride !== undefined ? placedOverride : placed;
     const placedTokens = seq.map((i) => scrambleQ.tokens[i]);
+    const origTokens = scrambleQ.sentence.english.trim().split(/\s+/);
     const correct =
-      placedTokens.length === scrambleQ.tokens.length &&
-      placedTokens.every((t, i) => normToken(t) === normToken(scrambleQ.tokens[i]));
+      placedTokens.length === origTokens.length &&
+      placedTokens.every((t, i) => normToken(t) === normToken(origTokens[i]));
     if (correct) setScore((s) => s + 1);
     onSentenceResult(scrambleQ.sentence.id, correct);
     setFeedback({ correct, answerText: scrambleQ.sentence.english });
@@ -704,11 +715,15 @@ export const GameView: React.FC<GameViewProps> = ({
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">拼出正確的英文單字</div>
                   <div className="text-2xl font-bold text-brand-800">{word.meaning}</div>
                   <div className="text-xs text-slate-400 font-mono">{word.phonetic || ''}</div>
-                  {word.exampleSentence && (
-                    <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 inline-block">
-                      {word.exampleSentence.replace(new RegExp(stripPunct(word.english).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '____')}
-                    </div>
-                  )}
+                  {word.exampleSentence && (() => {
+                    const pattern = word.english.trim().split(/\s+/).map((w) => w.replace(/[^a-zA-Z0-9]/g, '')).filter(Boolean).join('\\s+');
+                    const masked = pattern ? word.exampleSentence.replace(new RegExp(pattern, 'gi'), '____') : word.exampleSentence;
+                    return (
+                      <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 inline-block">
+                        {masked}
+                      </div>
+                    );
+                  })()}
                   <button
                     onClick={() => SpeechService.speak(word.meaning ? word.english : word.english)}
                     className="ml-2 p-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600"

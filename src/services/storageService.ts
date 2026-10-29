@@ -221,6 +221,22 @@ export class StorageService {
   public static importAllData(jsonStr: string): boolean {
     try {
       const data = JSON.parse(jsonStr);
+      // 若匯入的備份包含特定項目，先將其從既有墓碑中移除，確保能正常復原
+      if (data.words && Array.isArray(data.words)) {
+        const importedWordIds = new Set(data.words.map((w: any) => w.id));
+        const filteredDelWords = this.getDeletedWordIds().filter((id) => !importedWordIds.has(id));
+        localStorage.setItem(KEYS.DELETED_WORDS, JSON.stringify(filteredDelWords));
+      }
+      if (data.sentences && Array.isArray(data.sentences)) {
+        const importedSentenceIds = new Set(data.sentences.map((s: any) => s.id));
+        const filteredDelSentences = this.getDeletedSentenceIds().filter((id) => !importedSentenceIds.has(id));
+        localStorage.setItem(KEYS.DELETED_SENTENCES, JSON.stringify(filteredDelSentences));
+      }
+      if (data.gameRecords && Array.isArray(data.gameRecords)) {
+        const importedRecordIds = new Set(data.gameRecords.map((r: any) => r.id));
+        const filteredDelRecords = this.getDeletedRecordIds().filter((id) => !importedRecordIds.has(id));
+        localStorage.setItem(KEYS.DELETED_RECORDS, JSON.stringify(filteredDelRecords));
+      }
       if (data.deletedWordIds && Array.isArray(data.deletedWordIds)) {
         this.saveDeletedIds(data.deletedWordIds, [], []);
       }
