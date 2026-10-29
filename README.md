@@ -59,7 +59,7 @@ npm run build
 1. 到 [supabase.com](https://supabase.com) 免費註冊並 **New Project**（免費方案即可，免信用卡）。
 2. 開啟本應用 → 右上角 **「設定雲端」** → **「查看 Supabase SQL 建表腳本」** → **複製 SQL**。
 3. 在 Supabase Dashboard 的 **SQL Editor** 貼上並執行（建立 `words`、`sentences`、`game_records` 三張表）。
-4. 到 Supabase 的 **Project Settings → API** 複製 **Project URL** 與 **anon public Key**。
+4. 到 Supabase 的 **Project Settings → Data API** 複製 **Project URL**（格式為 `https://<專案ID>.supabase.co`），並至 **API Keys** 複製 **anon public Key**。
 5. 回到應用貼上網址與金鑰 → 開啟 **啟用 Supabase** → 按下「儲存並立即同步」完成！
 6. 之後在任何一台手機/電腦輸入同樣的網址與金鑰，資料就會自動雙向同步。
 

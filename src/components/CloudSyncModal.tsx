@@ -93,7 +93,7 @@ const CloudSyncModalContent: React.FC<Omit<CloudSyncModalProps, 'isOpen'>> = ({
               2. 到專案的 <span className="font-bold">SQL Editor</span> 貼上並執行下方的「SQL 建表腳本」。
             </p>
             <p className="leading-relaxed">
-              3. 到 <span className="font-bold">Settings → API</span> 複製 <span className="font-bold">Project URL</span> 與 <span className="font-bold">anon public key</span> 貼在下方即可開始同步！
+              3. 到 <span className="font-bold">Settings → Data API</span> 複製 <span className="font-bold">Project URL</span>（格式為 https://&lt;專案ID&gt;.supabase.co），並至 <span className="font-bold">API Keys</span> 複製 <span className="font-bold">anon public key</span> 貼在下方即可開始同步！
             </p>
           </div>
 
