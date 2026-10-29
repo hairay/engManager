@@ -188,17 +188,20 @@ export const GameView: React.FC<GameViewProps> = ({
       total = questions.length;
     } else if (game === 'sentence_cloze') {
       const picked = shuffle(poolSentences).slice(0, n);
-      const distractorPool = Array.from(
-        new Set([
-          ...sentences
-            .filter((s) => s.id !== picked[0]?.id)
-            .flatMap((s) => s.english.split(/\s+/).map(normToken))
-            .filter((t) => t.length >= 3 && !STOPWORDS.has(t)),
-          ...words.map((w) => stripPunct(w.english).toLowerCase()).filter((t) => t.length >= 3),
-        ])
-      );
+      // 干擾選項池（排除當前題目句子，避免同句其他單字也變成選項）
+      const buildDistractorPool = (excludeId: string) =>
+        Array.from(
+          new Set([
+            ...sentences
+              .filter((s) => s.id !== excludeId)
+              .flatMap((s) => s.english.split(/\s+/).map(normToken))
+              .filter((t) => t.length >= 3 && !STOPWORDS.has(t)),
+            ...words.map((w) => stripPunct(w.english).toLowerCase()).filter((t) => t.length >= 3),
+          ])
+        );
       const questions: ClozeQuestion[] = [];
       for (const sentence of picked) {
+        const distractorPool = buildDistractorPool(sentence.id);
         const tokensRaw = sentence.english.split(/\s+/);
         const candidates = tokensRaw
           .map(stripPunct)
@@ -724,13 +727,15 @@ export const GameView: React.FC<GameViewProps> = ({
                       </div>
                     );
                   })()}
-                  <button
-                    onClick={() => SpeechService.speak(word.meaning ? word.english : word.english)}
-                    className="ml-2 p-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600"
-                    title="聽不懂？點我聽發音"
-                  >
-                    <Volume2 className="w-4 h-4" />
-                  </button>
+                  {feedback && (
+                    <button
+                      onClick={() => SpeechService.speak(word.english)}
+                      className="ml-2 p-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600"
+                      title="播放正解發音"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 {/* 作答槽位 */}
@@ -799,7 +804,7 @@ export const GameView: React.FC<GameViewProps> = ({
                 {!feedback && (
                   <div className="flex items-center justify-center space-x-2 text-[11px] text-slate-400">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>可直接打鍵盤輸入字母、Backspace 刪除；填滿後自動判斷 {remaining.length === 0 ? '' : ''}（剩餘 {remaining.length} 顆）</span>
+                    <span>可直接打鍵盤輸入字母、Backspace 刪除；填滿後自動判斷 （剩餘 {remaining.length} 顆）</span>
                   </div>
                 )}
               </>

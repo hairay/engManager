@@ -45,13 +45,15 @@ export class SyncUtils {
     return localTs >= cloudTs ? local : cloud;
   }
 
+  /**
+   * 逐欄位比較兩份清單內容是否一致（與物件屬性順序無關，避免本機與雲端
+   * normalize 產生不同 key 順序時造成假差異而重複寫入 localStorage）。
+   */
   public static isSameList<T extends { id: string }>(listA: T[], listB: T[]): boolean {
     if (listA.length !== listB.length) return false;
-
-    const sortedA = [...listA].sort((a, b) => a.id.localeCompare(b.id));
-    const sortedB = [...listB].sort((a, b) => a.id.localeCompare(b.id));
-    const strA = JSON.stringify(sortedA);
-    const strB = JSON.stringify(sortedB);
-    return strA === strB;
+    const canonical = (item: T): string =>
+      JSON.stringify(Object.entries(item).sort((a, b) => a[0].localeCompare(b[0])));
+    const mapB = new Map(listB.map((item) => [item.id, canonical(item)]));
+    return listA.every((item) => mapB.get(item.id) === canonical(item));
   }
 }

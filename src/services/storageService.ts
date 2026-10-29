@@ -211,7 +211,9 @@ export class StorageService {
       deletedWordIds: this.getDeletedWordIds(),
       deletedSentenceIds: this.getDeletedSentenceIds(),
       deletedRecordIds: this.getDeletedRecordIds(),
-      cloudConfig: this.getCloudConfig(),
+      // 匿名金鑰不隨備份匯出 (備份檔一旦外流，持 key 者等於可直接讀寫整個雲端資料庫；
+      // 匯入端本來就不會覆蓋雲端設定，故此處直接清空即可)
+      cloudConfig: { ...this.getCloudConfig(), supabaseAnonKey: '' },
       exportDate: new Date().toISOString(),
       version: '1.0.0',
     };
@@ -221,6 +223,20 @@ export class StorageService {
   public static importAllData(jsonStr: string): boolean {
     try {
       const data = JSON.parse(jsonStr);
+      // 形狀驗證：清單欄位必須是陣列且每筆為含字串 id 的物件，
+      // 防止髒備份整份寫入 localStorage (拋出錯誤由 catch 統一處理)
+      const assertEntityArray = (value: unknown, field: string): void => {
+        if (value === undefined) return;
+        if (
+          !Array.isArray(value) ||
+          !value.every((e) => e && typeof e === 'object' && typeof (e as { id: unknown }).id === 'string')
+        ) {
+          throw new Error(`備份欄位格式不正確: ${field}`);
+        }
+      };
+      assertEntityArray(data.words, 'words');
+      assertEntityArray(data.sentences, 'sentences');
+      assertEntityArray(data.gameRecords, 'gameRecords');
       // 若匯入的備份包含特定項目，先將其從既有墓碑中移除，確保能正常復原
       if (data.words && Array.isArray(data.words)) {
         const importedWordIds = new Set(data.words.map((w: any) => w.id));

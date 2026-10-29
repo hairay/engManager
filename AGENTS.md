@@ -15,10 +15,15 @@ literals are Traditional Chinese (zh-TW) — preserve locale when editing.
 - `npm run lint` — **oxlint** (NOT eslint). Config in `.oxlintrc.json`.
 - `npm run build:exe` — runs build, then `electron-packager` →
   `dist-win/EngManager-win32-x64/EngManager.exe` (Windows x64 only).
-- `npm run build:apk` — runs build, Capacitor sync (auto `cap add android` on
-  first run), and compiles Android APK via Gradle → `dist-apk/EngManager.apk`.
+- `npm run build:apk` → `build-apk.bat`: build, Capacitor sync (auto `cap add
+  android` on first run), Gradle assembleDebug → `dist-apk/EngManager.apk`.
+  Requires **JDK 21** (Capacitor 8 / Android 16); the bat script auto-detects
+  common JDK 21 paths — don't downgrade Java.
 
-There is **no test framework** and no CI configured.
+There is **no test framework**. CI is `.github/workflows/deploy.yml`: every push
+to `master` runs `npm run lint` + `npm run build` (Node 22) and deploys `dist/`
+to **GitHub Pages** — a broken build on master takes the live site down, so
+build locally before pushing master.
 
 ## Architecture & entrypoints
 
@@ -45,6 +50,9 @@ There is **no test framework** and no CI configured.
   delete → upsert) and the `SUPABASE_SQL_SCHEMA` string shown to users in
   CloudSyncModal. Keep schema string and `src/types/index.ts` fields in sync.
 - `src/services/syncUtils.ts` — mergeByIdSmart: latest updatedAt wins.
+- `src/services/loggerService.ts` — in-memory log ring buffer persisted to
+  localStorage `engmanager_debug_logs`, shown in DebugLogModal (Capacitor has
+  no devtools; use this for mobile debugging).
 - `src/services/speechService.ts` — Web Speech API TTS; voices list must be
   warmed up via `SpeechService.warmUp()` on startup.
 - `GameView.tsx` — 4 games (word_quiz / word_spelling / sentence_cloze /

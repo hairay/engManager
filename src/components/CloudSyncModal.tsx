@@ -18,7 +18,7 @@ const CloudSyncModalContent: React.FC<Omit<CloudSyncModalProps, 'isOpen'>> = ({
   onUpdateCloudConfig,
   onSyncComplete,
 }) => {
-  const [enabled, setEnabled] = useState(cloudConfig.enabled || Boolean(cloudConfig.supabaseUrl));
+  const [enabled, setEnabled] = useState(cloudConfig.enabled);
   const [supabaseUrl, setSupabaseUrl] = useState(cloudConfig.supabaseUrl || '');
   const [supabaseAnonKey, setSupabaseAnonKey] = useState(cloudConfig.supabaseAnonKey || '');
   const [intervalSeconds, setIntervalSeconds] = useState(cloudConfig.syncIntervalSeconds || 15);
@@ -94,6 +94,9 @@ const CloudSyncModalContent: React.FC<Omit<CloudSyncModalProps, 'isOpen'>> = ({
             </p>
             <p className="leading-relaxed">
               3. 到 <span className="font-bold">Settings → Data API</span> 複製 <span className="font-bold">Project URL</span>（格式為 https://&lt;專案ID&gt;.supabase.co），並至 <span className="font-bold">API Keys</span> 複製 <span className="font-bold">anon public key</span> 貼在下方即可開始同步！
+            </p>
+            <p className="leading-relaxed rounded-lg bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1.5">
+              ⚠️ 安全提示：下方 SQL 採「anon 全公開」策略，任何取得 Project URL 與 anon key 的人都能讀寫整個資料庫。請勿將金鑰分享或公開貼出；多人使用時建議改用 Supabase Auth 並加入 user_id 隔離資料（見 SQL 腳本末段註解）。
             </p>
           </div>
 
