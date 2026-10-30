@@ -115,6 +115,7 @@ export const GameView: React.FC<GameViewProps> = ({
   // 英打挑戰: 已輸入文字與錯誤計數
   const [typedText, setTypedText] = useState('');
   const [mistakeCount, setMistakeCount] = useState(0);
+  const mistakeCountRef = useRef(0);
   const typingInputRef = useRef<HTMLInputElement>(null);
 
   /* ---------------- 最佳成績 ---------------- */
@@ -329,6 +330,7 @@ export const GameView: React.FC<GameViewProps> = ({
     setTyped([]);
     setPlaced([]);
     setTypedText('');
+    mistakeCountRef.current = 0;
     setMistakeCount(0);
     startTsRef.current = Date.now();
   };
@@ -387,6 +389,7 @@ export const GameView: React.FC<GameViewProps> = ({
     setTyped([]);
     setPlaced([]);
     setTypedText('');
+    mistakeCountRef.current = 0;
     setMistakeCount(0);
   };
 
@@ -504,17 +507,18 @@ export const GameView: React.FC<GameViewProps> = ({
     if (val.length > typedText.length) {
       const newIdx = val.length - 1;
       if (val[newIdx].toLowerCase() !== target[newIdx].toLowerCase()) {
-        setMistakeCount((m) => m + 1);
+        mistakeCountRef.current = mistakeCountRef.current + 1;
       }
     }
 
+    setMistakeCount(mistakeCountRef.current);
     setTypedText(val);
 
     // If completely typed
     if (val.length === target.length) {
       const isMatch = val.toLowerCase() === target.toLowerCase();
       if (isMatch) {
-        const isSuccess = mistakeCount <= 1;
+        const isSuccess = mistakeCountRef.current <= 1;
         if (isSuccess) setScore((s) => s + 1);
         if (typingQ.wordId) onWordResult(typingQ.wordId, isSuccess);
         else if (typingQ.sentenceId) onSentenceResult(typingQ.sentenceId, isSuccess);
