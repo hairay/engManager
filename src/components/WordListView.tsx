@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Word, WordCategory } from '../types';
 import {
   WORD_CATEGORY_LABELS,
@@ -7,8 +7,10 @@ import {
   LEVEL_LABELS,
   LEVEL_COLORS,
 } from '../types';
-import { Plus, Search, Volume2, Star, Edit3, Trash2, BookOpen, GraduationCap, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Search, Volume2, Star, Edit3, Trash2, BookOpen, GraduationCap, Sparkles, Loader2, MessageSquareQuote } from 'lucide-react';
 import { SpeechService } from '../services/speechService';
+import type { SpeechSequenceItem } from '../services/speechService';
+import { SequencePlayerBar } from './SequencePlayerBar';
 
 interface WordListViewProps {
   words: Word[];
@@ -36,6 +38,8 @@ export const WordListView: React.FC<WordListViewProps> = ({
   const [searchText, setSearchText] = useState('');
   const [scope, setScope] = useState<SearchScope>('all');
   const [categoryFilter, setCategoryFilter] = useState<WordCategory | 'all'>('all');
+  const [includeExample, setIncludeExample] = useState(true);
+  const [seqIndex, setSeqIndex] = useState(-1); // 連續朗讀目前的項目索引
 
   const filteredWords = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -52,6 +56,31 @@ export const WordListView: React.FC<WordListViewProps> = ({
       })
       .sort((a, b) => a.level - b.level || b.createdAt.localeCompare(a.createdAt));
   }, [words, searchText, scope, categoryFilter]);
+
+  // 連續朗讀佇列：單字本體 (可選加例句)
+  const sequenceItems: SpeechSequenceItem[] = useMemo(() => {
+    return filteredWords.map((w) => {
+      if (includeExample && w.exampleSentence) {
+        return { parts: [w.english, w.exampleSentence], rate: 0.85 };
+      }
+      return { parts: [w.english], rate: 0.92 };
+    });
+  }, [filteredWords, includeExample]);
+
+  // 監聽連續朗讀進度：高亮當前卡片並自動捲動到畫面內
+  useEffect(() => {
+    const off = SpeechService.addSequenceListener((index) => setSeqIndex(index));
+    return () => {
+      off();
+      SpeechService.stopSequence();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (seqIndex < 0) return;
+    const el = document.querySelector<HTMLElement>(`[data-seq-idx="${seqIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [seqIndex]);
 
   const missingInfoCount = useMemo(() => {
     return words.filter(
@@ -145,10 +174,28 @@ export const WordListView: React.FC<WordListViewProps> = ({
       </div>
 
       {/* Count */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between gap-3 px-1">
         <div className="text-xs font-semibold text-slate-500 flex items-center space-x-1.5">
           <BookOpen className="w-3.5 h-3.5 text-brand-600" />
           <span>共 {filteredWords.length} 個單字 (全部 {words.length})</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* 連續朗讀含例句切換 */}
+          <button
+            onClick={() => setIncludeExample((v) => !v)}
+            title={includeExample ? '連續朗讀將包含例句 (點擊關閉)' : '連續朗讀僅播放單字 (點擊加入例句)'}
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              includeExample
+                ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
+                : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
+            }`}
+          >
+            <MessageSquareQuote className="w-4 h-4" />
+            <span className="hidden sm:inline">含例句</span>
+          </button>
+
+          {/* 連續朗讀控制列 */}
+          <SequencePlayerBar items={sequenceItems} unitLabel="單字" />
         </div>
       </div>
 
@@ -161,10 +208,15 @@ export const WordListView: React.FC<WordListViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filteredWords.map((word) => (
+          {filteredWords.map((word, i) => (
             <div
               key={word.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-4 flex flex-col"
+              data-seq-idx={i}
+              className={`bg-white rounded-2xl border shadow-sm transition-all p-4 flex flex-col ${
+                seqIndex === i
+                  ? 'border-brand-400 ring-2 ring-brand-500/60 shadow-md bg-brand-50/40'
+                  : 'border-slate-200 hover:shadow-md'
+              }`}
             >
               {/* Top row: english + actions */}
               <div className="flex items-start justify-between">

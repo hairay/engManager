@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Sentence, WordCategory } from '../types';
 import {
   WORD_CATEGORY_LABELS,
@@ -8,6 +8,8 @@ import {
 } from '../types';
 import { Plus, Search, Volume2, Star, Edit3, Trash2, Quote, Sparkles, Loader2 } from 'lucide-react';
 import { SpeechService } from '../services/speechService';
+import type { SpeechSequenceItem } from '../services/speechService';
+import { SequencePlayerBar } from './SequencePlayerBar';
 
 interface SentenceListViewProps {
   sentences: Sentence[];
@@ -35,6 +37,7 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
   const [searchText, setSearchText] = useState('');
   const [scope, setScope] = useState<SearchScope>('all');
   const [categoryFilter, setCategoryFilter] = useState<WordCategory | 'all'>('all');
+  const [seqIndex, setSeqIndex] = useState(-1); // 連續朗讀目前的項目索引
 
   const filteredSentences = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -51,6 +54,27 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
       })
       .sort((a, b) => a.level - b.level || b.createdAt.localeCompare(a.createdAt));
   }, [sentences, searchText, scope, categoryFilter]);
+
+  // 連續朗讀佇列：逐句朗讀英文原文
+  const sequenceItems: SpeechSequenceItem[] = useMemo(
+    () => filteredSentences.map((s) => ({ parts: [s.english], rate: 0.85 })),
+    [filteredSentences]
+  );
+
+  // 監聽連續朗讀進度：高亮當前卡片並自動捲動到畫面內
+  useEffect(() => {
+    const off = SpeechService.addSequenceListener((index) => setSeqIndex(index));
+    return () => {
+      off();
+      SpeechService.stopSequence();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (seqIndex < 0) return;
+    const el = document.querySelector<HTMLElement>(`[data-seq-idx="${seqIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [seqIndex]);
 
   const missingInfoCount = useMemo(() => {
     return sentences.filter((s) => !s.chinese || !s.note).length;
@@ -142,10 +166,14 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
       </div>
 
       {/* Count */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between gap-3 px-1">
         <div className="text-xs font-semibold text-slate-500 flex items-center space-x-1.5">
           <Quote className="w-3.5 h-3.5 text-brand-600" />
           <span>共 {filteredSentences.length} 句 (全部 {sentences.length})</span>
+        </div>
+        <div className="shrink-0">
+          {/* 連續朗讀控制列 */}
+          <SequencePlayerBar items={sequenceItems} unitLabel="句子" />
         </div>
       </div>
 
@@ -158,10 +186,15 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-          {filteredSentences.map((sentence) => (
+          {filteredSentences.map((sentence, i) => (
             <div
               key={sentence.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-4 flex flex-col"
+              data-seq-idx={i}
+              className={`bg-white rounded-2xl border shadow-sm transition-all p-4 flex flex-col ${
+                seqIndex === i
+                  ? 'border-brand-400 ring-2 ring-brand-500/60 shadow-md bg-brand-50/40'
+                  : 'border-slate-200 hover:shadow-md'
+              }`}
             >
               {/* Top row: english + actions */}
               <div className="flex items-start justify-between gap-2">
