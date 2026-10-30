@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { StorageService } from './storageService';
 import { SyncUtils } from './syncUtils';
 import { LoggerService } from './loggerService';
