@@ -55,7 +55,10 @@ export class LoggerService {
     try {
       const raw = localStorage.getItem('engmanager_debug_logs');
       if (raw) {
-        this.entries = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.entries = parsed.filter((e) => e && typeof e === 'object');
+        }
       }
     } catch {
       this.entries = [];

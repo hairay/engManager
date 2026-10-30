@@ -1,5 +1,6 @@
 import type { Word, Sentence, GameRecord, CloudConfig, EnrichmentConfig } from '../types';
 import { INITIAL_WORDS, INITIAL_SENTENCES } from './mockData';
+import { LoggerService } from './loggerService';
 
 const KEYS = {
   WORDS: 'engmanager_words',
@@ -13,14 +14,41 @@ const KEYS = {
 };
 
 export class StorageService {
-  // --- Deleted Item Tombstone Tracking (防止雲端同步復活已刪除資料) ---
-  public static getDeletedWordIds(): string[] {
+  private static rescueReportedKeys = new Set<string>();
+
+  private static readIdArray(key: string): string[] {
     try {
-      const raw = localStorage.getItem(KEYS.DELETED_WORDS);
-      return raw ? JSON.parse(raw) : [];
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed as string[];
+      }
+      return [];
     } catch {
       return [];
     }
+  }
+
+  private static rescueCorruptJson(key: string, raw: string): void {
+    const rescueKey = `${key}_corrupt_backup`;
+    const isFirstReport = !this.rescueReportedKeys.has(key);
+    try {
+      localStorage.setItem(rescueKey, raw);
+      if (isFirstReport) {
+        this.rescueReportedKeys.add(key);
+        LoggerService.error('Storage', `儲存資料 JSON 損毀 (${key})，原始內容已完整備份到 ${rescueKey}，載入以初始/空資料回復`);
+      }
+    } catch (e) {
+      if (isFirstReport) {
+        this.rescueReportedKeys.add(key);
+        LoggerService.error('Storage', `儲存資料 JSON 損毀 (${key})，原始內容備份失敗: ${(e as Error).message}`);
+      }
+    }
+  }
+
+  // --- Deleted Item Tombstone Tracking (防止雲端同步復活已刪除資料) ---
+  public static getDeletedWordIds(): string[] {
+    return this.readIdArray(KEYS.DELETED_WORDS);
   }
 
   public static addDeletedWordId(id: string): void {
@@ -29,12 +57,7 @@ export class StorageService {
   }
 
   public static getDeletedSentenceIds(): string[] {
-    try {
-      const raw = localStorage.getItem(KEYS.DELETED_SENTENCES);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+    return this.readIdArray(KEYS.DELETED_SENTENCES);
   }
 
   public static addDeletedSentenceId(id: string): void {
@@ -43,12 +66,7 @@ export class StorageService {
   }
 
   public static getDeletedRecordIds(): string[] {
-    try {
-      const raw = localStorage.getItem(KEYS.DELETED_RECORDS);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+    return this.readIdArray(KEYS.DELETED_RECORDS);
   }
 
   public static addDeletedRecordId(id: string): void {
@@ -76,8 +94,11 @@ export class StorageService {
       this.saveWords(words);
     } else {
       try {
-        words = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('invalid array shape');
+        words = parsed as Word[];
       } catch {
+        this.rescueCorruptJson(KEYS.WORDS, raw);
         words = INITIAL_WORDS;
       }
     }
@@ -102,8 +123,11 @@ export class StorageService {
       this.saveSentences(sentences);
     } else {
       try {
-        sentences = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('invalid array shape');
+        sentences = parsed as Sentence[];
       } catch {
+        this.rescueCorruptJson(KEYS.SENTENCES, raw);
         sentences = INITIAL_SENTENCES;
       }
     }
@@ -125,8 +149,11 @@ export class StorageService {
 
     if (raw) {
       try {
-        records = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('invalid array shape');
+        records = parsed as GameRecord[];
       } catch {
+        this.rescueCorruptJson(KEYS.GAME_RECORDS, raw);
         records = [];
       }
     }
@@ -153,7 +180,11 @@ export class StorageService {
     const raw = localStorage.getItem(KEYS.CLOUD);
     if (!raw) return defaultConfig;
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return { ...defaultConfig, ...parsed } as CloudConfig;
+      }
+      return defaultConfig;
     } catch {
       return defaultConfig;
     }

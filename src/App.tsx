@@ -115,7 +115,6 @@ export function App() {
 
   // Load Data on Mount & Auto Sync Polling
   useEffect(() => {
-    LoggerService.hydrateFromStorage();
     LoggerService.info('App', '英語管家 EngManager 應用啟動');
     SpeechService.warmUp();
     triggerCloudSync();

@@ -2,8 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { LoggerService } from './services/loggerService.ts'
 import { SpeechService } from './services/speechService.ts'
 
+LoggerService.hydrateFromStorage();
 SpeechService.warmUp();
 
 createRoot(document.getElementById('root')!).render(
