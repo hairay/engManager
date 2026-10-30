@@ -52,16 +52,18 @@ export interface Sentence {
 }
 
 export type GameType =
-  | 'word_quiz'        // 單字快問快答 (四選一)
+  | 'word_quiz'        // 單字測驗 (四選一)
   | 'word_spelling'    // 拼字闖關 (字母拼圖)
+  | 'typing_practice'  // 英打挑戰 (鍵盤打字)
   | 'sentence_cloze'   // 句子填空 (四選一)
   | 'sentence_scramble'; // 排句成序 (字卡排序)
 
 export const GAME_INFO: Record<GameType, { title: string; emoji: string; desc: string }> = {
-  word_quiz: { title: '單字快問快答', emoji: '⚡', desc: '看單字選中文，或看中文選單字' },
-  word_spelling: { title: '拼字闖關', emoji: '🔤', desc: '依中文提示與音標，拼出正確單字' },
-  sentence_cloze: { title: '句子填空', emoji: '✏️', desc: '句子挖出一個關鍵字，選出正確答案' },
-  sentence_scramble: { title: '排句成序', emoji: '🧩', desc: '把打亂的字卡排成正確句子' },
+  word_quiz: { title: '單字測驗', emoji: '🎯', desc: '看單字選中文，或看中文選單字（無時間限制）' },
+  word_spelling: { title: '拼字闖關', emoji: '🔤', desc: '依中文提示與音標，拼出正確單字（無時間限制）' },
+  typing_practice: { title: '英打挑戰', emoji: '⌨️', desc: '鍵盤英打輸入練習，加深單字肌肉記憶（無時間限制）' },
+  sentence_cloze: { title: '句子填空', emoji: '✏️', desc: '句子挖出關鍵字，選出正確答案（無時間限制）' },
+  sentence_scramble: { title: '排句成序', emoji: '🧩', desc: '把打亂的字卡排成正確句子（無時間限制）' },
 };
 
 export interface GameRecord {
@@ -84,6 +86,29 @@ export interface CloudConfig {
   lastSyncTime: string | null;
   syncStatus: 'idle' | 'syncing' | 'success' | 'error';
   errorMessage?: string;
+}
+
+export interface EnrichmentConfig {
+  autoEnrichOnAdd: boolean;
+  geminiApiKey: string;
+}
+
+export interface WordEnrichResult {
+  english: string;
+  phonetic: string;
+  partOfSpeech: PartOfSpeech;
+  meaning: string;
+  exampleSentence: string;
+  exampleTranslation: string;
+  category: WordCategory;
+  note: string;
+}
+
+export interface SentenceEnrichResult {
+  english: string;
+  chinese: string;
+  category: WordCategory;
+  note: string;
 }
 
 export const WORD_CATEGORY_LABELS: Record<WordCategory, string> = {

@@ -6,25 +6,31 @@ import {
   LEVEL_LABELS,
   LEVEL_COLORS,
 } from '../types';
-import { Plus, Search, Volume2, Star, Edit3, Trash2, Quote } from 'lucide-react';
+import { Plus, Search, Volume2, Star, Edit3, Trash2, Quote, Sparkles, Loader2 } from 'lucide-react';
 import { SpeechService } from '../services/speechService';
 
 interface SentenceListViewProps {
   sentences: Sentence[];
+  enrichingSentenceId?: string | null;
   onDeleteSentence: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (sentence: Sentence) => void;
+  onEnrichSentence: (sentence: Sentence) => void;
+  onOpenBatchEnrich: () => void;
 }
 
 type SearchScope = 'all' | 'favorites' | 'weak';
 
 export const SentenceListView: React.FC<SentenceListViewProps> = ({
   sentences,
+  enrichingSentenceId,
   onDeleteSentence,
   onToggleFavorite,
   onOpenAddModal,
   onOpenEditModal,
+  onEnrichSentence,
+  onOpenBatchEnrich,
 }) => {
   const [searchText, setSearchText] = useState('');
   const [scope, setScope] = useState<SearchScope>('all');
@@ -45,6 +51,10 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
       })
       .sort((a, b) => a.level - b.level || b.createdAt.localeCompare(a.createdAt));
   }, [sentences, searchText, scope, categoryFilter]);
+
+  const missingInfoCount = useMemo(() => {
+    return sentences.filter((s) => !s.chinese || !s.note).length;
+  }, [sentences]);
 
   const categoryChips: Array<{ key: WordCategory | 'all'; label: string }> = [
     { key: 'all', label: '全部' },
@@ -70,7 +80,7 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
             />
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex rounded-xl bg-slate-100 p-1">
+            <div className="flex rounded-xl bg-slate-800 p-1 border border-slate-700">
               {([
                 { key: 'all', label: '全部' },
                 { key: 'favorites', label: '收藏' },
@@ -79,17 +89,33 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
                 <button
                   key={s.key}
                   onClick={() => setScope(s.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    scope === s.key ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    scope === s.key ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {s.label}
                 </button>
               ))}
             </div>
+
+            {/* Batch Auto Enrich button */}
+            <button
+              onClick={onOpenBatchEnrich}
+              className="flex items-center space-x-1.5 px-3 py-2.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold transition-all"
+              title="批量連網尋找補充缺漏的句子翻譯或筆記"
+            >
+              <Sparkles className="w-4 h-4 text-brand-600" />
+              <span className="hidden sm:inline">批量補充</span>
+              {missingInfoCount > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">
+                  {missingInfoCount}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={onOpenAddModal}
-              className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-600/30 transition-all"
+              className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-600/30 transition-all shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>新增句子</span>
@@ -151,6 +177,19 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
                   <div className="text-sm text-slate-500 mt-1 leading-relaxed">{sentence.chinese}</div>
                 </div>
                 <div className="flex items-center space-x-1 shrink-0">
+                  {/* Smart Enrich Button */}
+                  <button
+                    onClick={() => onEnrichSentence(sentence)}
+                    disabled={enrichingSentenceId === sentence.id}
+                    title="自動補充翻譯與語法筆記"
+                    className="p-1.5 rounded-lg text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors disabled:opacity-50"
+                  >
+                    {enrichingSentenceId === sentence.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                  </button>
                   <button
                     onClick={() => onToggleFavorite(sentence.id)}
                     title={sentence.favorite ? '取消收藏' : '加入收藏'}
@@ -169,7 +208,7 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm('確定要刪除此句子嗎？')) onDeleteSentence(sentence.id);
+                      if (confirm(`確定要刪除此句子嗎？`)) onDeleteSentence(sentence.id);
                     }}
                     title="刪除"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
@@ -179,18 +218,22 @@ export const SentenceListView: React.FC<SentenceListViewProps> = ({
                 </div>
               </div>
 
-              {/* Bottom row: level + category */}
+              {/* Bottom row: level + category + note */}
               <div className="mt-auto pt-3 flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
                   <span className={`w-2.5 h-2.5 rounded-full ${LEVEL_COLORS[sentence.level] || 'bg-slate-300'}`} />
                   <span className="text-[11px] font-bold text-slate-600">{LEVEL_LABELS[sentence.level] || '生疏'}</span>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${WORD_CATEGORY_COLORS[sentence.category]}`}>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${WORD_CATEGORY_COLORS[sentence.category]}`}
+                >
                   {WORD_CATEGORY_LABELS[sentence.category]}
                 </span>
               </div>
               {sentence.note && (
-                <div className="mt-2 text-[11px] text-slate-400 italic border-t border-slate-100 pt-2">📝 {sentence.note}</div>
+                <div className="mt-2 text-[11px] text-slate-400 italic border-t border-slate-100 pt-2">
+                  💡 {sentence.note}
+                </div>
               )}
             </div>
           ))}

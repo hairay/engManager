@@ -219,10 +219,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <>
                           <div className="text-sm font-bold text-brand-800">{(item as Word).meaning}</div>
                           {(item as Word).exampleSentence && (
-                            <div className="text-xs text-slate-500 mt-1">{(item as Word).exampleSentence}</div>
-                          )}
-                          {(item as Word).exampleTranslation && (
-                            <div className="text-[11px] text-slate-400 mt-0.5">{(item as Word).exampleTranslation}</div>
+                            <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-start justify-between gap-2">
+                              <div className="text-xs text-slate-600 leading-relaxed font-medium">
+                                {(item as Word).exampleSentence}
+                                {(item as Word).exampleTranslation && (
+                                  <div className="text-[11px] text-slate-400 mt-0.5">{(item as Word).exampleTranslation}</div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => SpeechService.speak((item as Word).exampleSentence, 0.85)}
+                                title="朗讀例句發音"
+                                className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors cursor-pointer"
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           )}
                         </>
                       ) : (

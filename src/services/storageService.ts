@@ -1,4 +1,4 @@
-import type { Word, Sentence, GameRecord, CloudConfig } from '../types';
+import type { Word, Sentence, GameRecord, CloudConfig, EnrichmentConfig } from '../types';
 import { INITIAL_WORDS, INITIAL_SENTENCES } from './mockData';
 
 const KEYS = {
@@ -6,6 +6,7 @@ const KEYS = {
   SENTENCES: 'engmanager_sentences',
   GAME_RECORDS: 'engmanager_game_records',
   CLOUD: 'engmanager_cloud_config',
+  ENRICHMENT: 'engmanager_enrichment_config',
   DELETED_WORDS: 'engmanager_deleted_word_ids',
   DELETED_SENTENCES: 'engmanager_deleted_sentence_ids',
   DELETED_RECORDS: 'engmanager_deleted_record_ids',
@@ -162,6 +163,29 @@ export class StorageService {
     localStorage.setItem(KEYS.CLOUD, JSON.stringify(config));
   }
 
+  // --- Enrichment Config ---
+  public static getEnrichmentConfig(): EnrichmentConfig {
+    const defaultConfig: EnrichmentConfig = {
+      autoEnrichOnAdd: true,
+      geminiApiKey: '',
+    };
+    const raw = localStorage.getItem(KEYS.ENRICHMENT);
+    if (!raw) return defaultConfig;
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        autoEnrichOnAdd: parsed.autoEnrichOnAdd ?? true,
+        geminiApiKey: parsed.geminiApiKey || '',
+      };
+    } catch {
+      return defaultConfig;
+    }
+  }
+
+  public static saveEnrichmentConfig(config: EnrichmentConfig): void {
+    localStorage.setItem(KEYS.ENRICHMENT, JSON.stringify(config));
+  }
+
   // --- Demo Data Eviction (避免示範資料汙染雲端的真實資料) ---
   public static getDemoIds(): { wordIds: Set<string>; sentenceIds: Set<string> } {
     return {
@@ -201,6 +225,7 @@ export class StorageService {
     localStorage.removeItem(KEYS.DELETED_SENTENCES);
     localStorage.removeItem(KEYS.DELETED_RECORDS);
     localStorage.removeItem(KEYS.CLOUD);
+    localStorage.removeItem(KEYS.ENRICHMENT);
   }
 
   public static exportAllData(): string {
@@ -214,6 +239,7 @@ export class StorageService {
       // 匿名金鑰不隨備份匯出 (備份檔一旦外流，持 key 者等於可直接讀寫整個雲端資料庫；
       // 匯入端本來就不會覆蓋雲端設定，故此處直接清空即可)
       cloudConfig: { ...this.getCloudConfig(), supabaseAnonKey: '' },
+      enrichmentConfig: { ...this.getEnrichmentConfig(), geminiApiKey: '' },
       exportDate: new Date().toISOString(),
       version: '1.0.0',
     };

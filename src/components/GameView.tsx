@@ -3,7 +3,7 @@ import type { Word, Sentence, GameType, WordCategory, GameRecord } from '../type
 import { GAME_INFO, WORD_CATEGORY_LABELS, LEVEL_LABELS } from '../types';
 import {
   Check, X, ChevronRight, Volume2, Trophy, Target, RotateCcw,
-  Timer, Sparkles, MousePointerClick, Undo2, Home,
+  Sparkles, MousePointerClick, Undo2, Home, Keyboard,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { SpeechService } from '../services/speechService';
@@ -66,6 +66,17 @@ interface ScrambleQuestion {
   sentence: Sentence;
   tokens: string[];
 }
+interface TypingQuestion {
+  id: string;
+  kind: 'word' | 'sentence';
+  target: string;
+  meaning: string;
+  phonetic?: string;
+  exampleSentence?: string;
+  exampleTranslation?: string;
+  wordId?: string;
+  sentenceId?: string;
+}
 
 /* ------------------------- 主組件 ------------------------- */
 
@@ -87,11 +98,11 @@ export const GameView: React.FC<GameViewProps> = ({
   const [spellingQs, setSpellingQs] = useState<SpellQuestion[]>([]);
   const [clozeQs, setClozeQs] = useState<ClozeQuestion[]>([]);
   const [scrambleQs, setScrambleQs] = useState<ScrambleQuestion[]>([]);
+  const [typingQs, setTypingQs] = useState<TypingQuestion[]>([]);
 
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState<null | { correct: boolean; answerText?: string; chosen?: string }>(null);
-  const [finalDuration, setFinalDuration] = useState(0);
   const startTsRef = useRef<number>(0);
 
   /* --- 每個遊戲自己的作答狀態 --- */
@@ -101,6 +112,10 @@ export const GameView: React.FC<GameViewProps> = ({
   const [typed, setTyped] = useState<number[]>([]);
   // 排句: 已拼接的 token 流
   const [placed, setPlaced] = useState<number[]>([]);
+  // 英打挑戰: 已輸入文字與錯誤計數
+  const [typedText, setTypedText] = useState('');
+  const [mistakeCount, setMistakeCount] = useState(0);
+  const typingInputRef = useRef<HTMLInputElement>(null);
 
   /* ---------------- 最佳成績 ---------------- */
   const bestByGame = useMemo(() => {
@@ -143,6 +158,7 @@ export const GameView: React.FC<GameViewProps> = ({
   const needMap: Record<GameType, { count: number; label: string; current: number }> = {
     word_quiz: { count: 4, label: '單字', current: poolWords.length },
     word_spelling: { count: 1, label: '單字', current: poolWords.filter((w) => stripPunct(w.english).length >= 2).length },
+    typing_practice: { count: 1, label: '單字/句子', current: poolWords.length > 0 ? poolWords.length : poolSentences.length },
     sentence_cloze: { count: 2, label: '句子', current: poolSentences.length },
     sentence_scramble: { count: 1, label: '句子', current: poolSentences.length },
   };
@@ -185,6 +201,37 @@ export const GameView: React.FC<GameViewProps> = ({
         return { word, tokens, target: stripPunct(word.english).toLowerCase() };
       });
       setSpellingQs(questions);
+      total = questions.length;
+    } else if (game === 'typing_practice') {
+      const candidates: Array<Word | Sentence> = poolWords.length > 0 ? poolWords : poolSentences;
+      const picked = shuffle(candidates).slice(0, n);
+      const questions: TypingQuestion[] = picked.map((item) => {
+        if ('meaning' in item) {
+          const w = item as Word;
+          return {
+            id: w.id,
+            kind: 'word',
+            target: w.english.trim(),
+            meaning: w.meaning,
+            phonetic: w.phonetic,
+            exampleSentence: w.exampleSentence,
+            exampleTranslation: w.exampleTranslation,
+            wordId: w.id,
+          };
+        } else {
+          const s = item as Sentence;
+          return {
+            id: s.id,
+            kind: 'sentence',
+            target: s.english.trim(),
+            meaning: s.chinese,
+            exampleSentence: s.english,
+            exampleTranslation: s.chinese,
+            sentenceId: s.id,
+          };
+        }
+      });
+      setTypingQs(questions);
       total = questions.length;
     } else if (game === 'sentence_cloze') {
       const picked = shuffle(poolSentences).slice(0, n);
@@ -281,12 +328,13 @@ export const GameView: React.FC<GameViewProps> = ({
     setChosenIdx(null);
     setTyped([]);
     setPlaced([]);
+    setTypedText('');
+    setMistakeCount(0);
     startTsRef.current = Date.now();
   };
 
   const finish = (finalScore: number, totalQs: number) => {
     const durationSec = Math.max(1, Math.round((Date.now() - startTsRef.current) / 1000));
-    setFinalDuration(durationSec);
     if (activeGame) {
       onAddGameRecord(activeGame, finalScore, totalQs, durationSec);
     }
@@ -325,6 +373,7 @@ export const GameView: React.FC<GameViewProps> = ({
     const totalQs =
       activeGame === 'word_quiz' ? quizQs.length
       : activeGame === 'word_spelling' ? spellingQs.length
+      : activeGame === 'typing_practice' ? typingQs.length
       : activeGame === 'sentence_cloze' ? clozeQs.length
       : scrambleQs.length;
 
@@ -337,6 +386,8 @@ export const GameView: React.FC<GameViewProps> = ({
     setChosenIdx(null);
     setTyped([]);
     setPlaced([]);
+    setTypedText('');
+    setMistakeCount(0);
   };
 
   /* --- 拼字: tile 操作 + 自動檢查 + 鍵盤支援 --- */
@@ -416,12 +467,73 @@ export const GameView: React.FC<GameViewProps> = ({
     setFeedback({ correct, answerText: scrambleQ.sentence.english });
   };
 
+  /* --- 英打挑戰 --- */
+  const typingQ = activeGame === 'typing_practice' && typingQs[idx] ? typingQs[idx] : null;
+
+  useEffect(() => {
+    if (screen === 'play' && activeGame === 'typing_practice' && !feedback) {
+      const timer = setTimeout(() => {
+        typingInputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [screen, activeGame, idx, feedback]);
+
+  useEffect(() => {
+    if (screen !== 'play' || !feedback) return;
+    const handleNextKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        nextQuestion();
+      }
+    };
+    window.addEventListener('keydown', handleNextKey);
+    return () => window.removeEventListener('keydown', handleNextKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, feedback, idx]);
+
+  const handleTypingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (feedback || !typingQ) return;
+    const val = e.target.value;
+    const target = typingQ.target;
+
+    // Disallow typing past target length
+    if (val.length > target.length) return;
+
+    // Check newly typed character
+    if (val.length > typedText.length) {
+      const newIdx = val.length - 1;
+      if (val[newIdx].toLowerCase() !== target[newIdx].toLowerCase()) {
+        setMistakeCount((m) => m + 1);
+      }
+    }
+
+    setTypedText(val);
+
+    // If completely typed
+    if (val.length === target.length) {
+      const isMatch = val.toLowerCase() === target.toLowerCase();
+      if (isMatch) {
+        const isSuccess = mistakeCount <= 1;
+        if (isSuccess) setScore((s) => s + 1);
+        if (typingQ.wordId) onWordResult(typingQ.wordId, isSuccess);
+        else if (typingQ.sentenceId) onSentenceResult(typingQ.sentenceId, isSuccess);
+        SpeechService.speak(target);
+        setFeedback({
+          correct: isSuccess,
+          answerText: target,
+        });
+      }
+    }
+  };
+
   /* ====================== RENDER ====================== */
 
   const totalQs =
     screen === 'play' || screen === 'result'
       ? (activeGame === 'word_quiz' ? quizQs.length
         : activeGame === 'word_spelling' ? spellingQs.length
+        : activeGame === 'typing_practice' ? typingQs.length
         : activeGame === 'sentence_cloze' ? clozeQs.length
         : scrambleQs.length)
       : 0;
@@ -432,10 +544,15 @@ export const GameView: React.FC<GameViewProps> = ({
       <div className="space-y-4">
         {/* 出題設定 */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
-          <h3 className="font-bold text-sm text-slate-800 flex items-center space-x-2">
-            <MousePointerClick className="w-4 h-4 text-brand-600" />
-            <span>出題設定</span>
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-800 flex items-center space-x-2">
+              <MousePointerClick className="w-4 h-4 text-brand-600" />
+              <span>出題設定</span>
+            </h3>
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              🌱 無時間限制 · 輕鬆複習
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-slate-500">範圍：</span>
             {([
@@ -564,9 +681,14 @@ export const GameView: React.FC<GameViewProps> = ({
             </span>
           </div>
           <div className="flex items-center space-x-3 text-xs font-bold text-slate-500">
-            <span className="flex items-center space-x-1"><Timer className="w-3.5 h-3.5 text-sky-500" /><span>{Math.max(1, Math.round((Date.now() - startTsRef.current) / 1000))}s</span></span>
-            <span className="flex items-center space-x-1"><Check className="w-3.5 h-3.5 text-emerald-500" /><span>{score}</span></span>
-            <span>{screen === 'play' ? `第 ${idx + 1}/${totalQs} 題` : '完成'}</span>
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              無時間限制
+            </span>
+            <span className="flex items-center space-x-1 text-emerald-600 font-extrabold">
+              <Check className="w-3.5 h-3.5" />
+              <span>{score}</span>
+            </span>
+            <span className="text-slate-700 font-bold">{screen === 'play' ? `第 ${idx + 1}/${totalQs} 題` : '完成'}</span>
           </div>
         </div>
         {screen === 'play' && (
@@ -587,11 +709,13 @@ export const GameView: React.FC<GameViewProps> = ({
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto text-left">
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
               <div className="text-[10px] font-bold text-slate-400 uppercase">答對題數</div>
-              <div className="text-lg font-extrabold text-emerald-600">{score}</div>
+              <div className="text-lg font-extrabold text-emerald-600">{score} / {totalQs}</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-              <div className="text-[10px] font-bold text-slate-400 uppercase">用時 (秒)</div>
-              <div className="text-lg font-extrabold text-sky-600">{finalDuration}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">正確率</div>
+              <div className="text-lg font-extrabold text-brand-600">
+                {Math.round((score / Math.max(1, totalQs)) * 100)}%
+              </div>
             </div>
           </div>
           <div className="text-xs text-slate-400">
@@ -722,8 +846,16 @@ export const GameView: React.FC<GameViewProps> = ({
                     const pattern = word.english.trim().split(/\s+/).map((w) => w.replace(/[^a-zA-Z0-9]/g, '')).filter(Boolean).join('\\s+');
                     const masked = pattern ? word.exampleSentence.replace(new RegExp(pattern, 'gi'), '____') : word.exampleSentence;
                     return (
-                      <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 inline-block">
-                        {masked}
+                      <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 inline-flex items-center space-x-2">
+                        <span>{masked}</span>
+                        <button
+                          type="button"
+                          onClick={() => SpeechService.speak(word.exampleSentence, 0.85)}
+                          className="p-1 text-slate-400 hover:text-brand-600 rounded transition-colors cursor-pointer"
+                          title="朗讀例句發音"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     );
                   })()}
@@ -811,6 +943,190 @@ export const GameView: React.FC<GameViewProps> = ({
             );
           })()}
 
+          {/* = 英打挑戰 = */}
+          {activeGame === 'typing_practice' && typingQ && (() => {
+            const target = typingQ.target;
+            const targetChars = target.split('');
+            const uniqueSymbols = Array.from(new Set(target.replace(/[a-zA-Z0-9]/g, '').split(''))).filter((c) => c !== '');
+
+            return (
+              <div
+                onClick={() => typingInputRef.current?.focus()}
+                className="space-y-4 cursor-text"
+              >
+                <div className="text-center space-y-1.5">
+                  <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-50 text-brand-700 border border-brand-200">
+                    <Keyboard className="w-3.5 h-3.5" />
+                    <span>英打肌肉記憶練習</span>
+                    {typingQ.kind === 'word' ? <span>· 單字</span> : <span>· 句子</span>}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-2">
+                    {typingQ.meaning}
+                  </div>
+                  {typingQ.phonetic && (
+                    <div className="text-xs text-slate-400 font-mono">
+                      {typingQ.phonetic}
+                    </div>
+                  )}
+                  {typingQ.exampleSentence && (
+                    <div className="max-w-md mx-auto text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-left">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium italic">"{typingQ.exampleSentence}"</div>
+                        {typingQ.exampleTranslation && (
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {typingQ.exampleTranslation}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          SpeechService.speak(typingQ.exampleSentence!, 0.85);
+                        }}
+                        className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-white transition-colors cursor-pointer"
+                        title="朗讀例句發音"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 字母磚即時顯示 */}
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 my-5 select-none font-mono">
+                  {targetChars.map((char, i) => {
+                    const isTyped = i < typedText.length;
+                    const isCurrent = i === typedText.length;
+                    const isCorrect = isTyped && typedText[i].toLowerCase() === char.toLowerCase();
+                    const isMistake = isTyped && !isCorrect;
+
+                    let tileStyle = 'border-slate-200 bg-slate-50 text-slate-400';
+                    if (isMistake) {
+                      tileStyle = 'border-rose-400 bg-rose-100 text-rose-700 font-extrabold ring-2 ring-rose-400/40';
+                    } else if (isCorrect) {
+                      tileStyle = 'border-emerald-400 bg-emerald-100 text-emerald-700 font-extrabold';
+                    } else if (isCurrent) {
+                      tileStyle = 'border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-500/40 animate-pulse font-extrabold';
+                    }
+
+                    return (
+                      <span
+                        key={i}
+                        className={`inline-flex items-center justify-center min-w-[28px] sm:min-w-[34px] h-10 sm:h-12 px-1 text-lg sm:text-2xl rounded-xl border-2 transition-all ${tileStyle} ${char === ' ' ? 'w-6 sm:w-8 border-dashed bg-slate-100/60' : ''}`}
+                      >
+                        {char === ' ' ? (isTyped ? '␣' : '·') : (isTyped ? typedText[i] : char)}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/* 輸入欄 */}
+                <div className="max-w-md mx-auto space-y-2">
+                  <div className="relative">
+                    <input
+                      ref={typingInputRef}
+                      type="text"
+                      value={typedText}
+                      onChange={handleTypingChange}
+                      onKeyDown={(e) => {
+                        const isFinished = feedback || (typedText.length === target.length && typedText.toLowerCase() === target.toLowerCase());
+                        if (isFinished && (e.key === 'Enter' || e.key === ' ' || e.code === 'Space')) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          nextQuestion();
+                          return;
+                        }
+                        if (!feedback && e.key === 'Enter' && typedText.length === target.length && typedText.toLowerCase() !== target.toLowerCase()) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (typingQ.wordId) onWordResult(typingQ.wordId, false);
+                          else if (typingQ.sentenceId) onSentenceResult(typingQ.sentenceId, false);
+                          SpeechService.speak(target);
+                          setFeedback({
+                            correct: false,
+                            answerText: target,
+                          });
+                        }
+                      }}
+                      placeholder={feedback ? '按 Enter 或 空白鍵進入下一題 →' : '請直接在鍵盤打字輸入...'}
+                      autoFocus
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                      readOnly={Boolean(feedback)}
+                      className={`w-full px-4 py-3 bg-white border-2 rounded-xl text-center text-lg sm:text-xl font-bold font-mono text-slate-800 placeholder:text-slate-400 outline-none transition-all ${
+                        feedback
+                          ? feedback.correct
+                            ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+                            : 'border-rose-400 ring-2 ring-rose-400/20'
+                          : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-500/20'
+                      }`}
+                    />
+                    {typedText.length > 0 && !feedback && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTypedText('');
+                          typingInputRef.current?.focus();
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 px-2 py-1 rounded-lg"
+                      >
+                        清空
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 標點與空格快捷晶片（方便手機平板觸控） */}
+                  {!feedback && (uniqueSymbols.length > 0 || target.includes(' ')) && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                      {target.includes(' ') && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (typedText.length < target.length) {
+                              handleTypingChange({ target: { value: typedText + ' ' } } as React.ChangeEvent<HTMLInputElement>);
+                            }
+                            typingInputRef.current?.focus();
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        >
+                          輸入空格 [␣]
+                        </button>
+                      )}
+                      {uniqueSymbols.map((sym) => (
+                        <button
+                          key={sym}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (typedText.length < target.length) {
+                              handleTypingChange({ target: { value: typedText + sym } } as React.ChangeEvent<HTMLInputElement>);
+                            }
+                            typingInputRef.current?.focus();
+                          }}
+                          className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 font-mono"
+                        >
+                          輸入 [ {sym} ]
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {!feedback && (
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                      <span>進度：{typedText.length} / {target.length} 字母</span>
+                      <span>失誤：{mistakeCount} 次</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* = 排句成序 = */}
           {activeGame === 'sentence_scramble' && scrambleQ && (() => {
             return (
@@ -892,14 +1208,36 @@ export const GameView: React.FC<GameViewProps> = ({
                 {feedback.correct ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                 <span>{feedback.correct ? '答對了！熟練度 +1' : `答錯了${feedback.answerText ? `，正確答案：${feedback.answerText}` : ''}（熟練度降回生疏）`}</span>
               </div>
+              {activeGame === 'word_quiz' && quizQs[idx]?.word.exampleSentence && (
+                <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-start justify-between gap-2 text-left bg-white/70 p-2.5 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-slate-700">
+                      {quizQs[idx].word.exampleSentence}
+                    </div>
+                    {quizQs[idx].word.exampleTranslation && (
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {quizQs[idx].word.exampleTranslation}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => SpeechService.speak(quizQs[idx].word.exampleSentence, 0.85)}
+                    className="shrink-0 p-1.5 rounded-md text-slate-500 hover:text-brand-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="朗讀例句發音"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <button
                 onClick={nextQuestion}
-                className="mt-3 w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5"
+                className="mt-3 w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 {idx + 1 >= totalQs ? (
                   <><Trophy className="w-4 h-4" /><span>查看本輪成績</span></>
                 ) : (
-                  <><ChevronRight className="w-4 h-4" /><span>下一題</span></>
+                  <><ChevronRight className="w-4 h-4" /><span>下一題（可按 Enter 或 空白鍵）</span></>
                 )}
               </button>
             </div>

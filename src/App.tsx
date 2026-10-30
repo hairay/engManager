@@ -9,13 +9,16 @@ import { WordModal } from './components/WordModal';
 import { SentenceModal } from './components/SentenceModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { DebugLogModal } from './components/DebugLogModal';
+import { EnrichmentConfigModal } from './components/EnrichmentConfigModal';
+import { BatchEnrichModal } from './components/BatchEnrichModal';
 import { StorageService } from './services/storageService';
 import { syncWithCloud } from './services/supabaseService';
 import { LoggerService } from './services/loggerService';
 import { SpeechService } from './services/speechService';
-import type { Word, Sentence, GameRecord, GameType, CloudConfig } from './types';
+import { EnrichmentService } from './services/enrichmentService';
+import type { Word, Sentence, GameRecord, GameType, CloudConfig, EnrichmentConfig } from './types';
 import { WORD_CATEGORY_LABELS, PART_OF_SPEECH_LABELS } from './types';
-import { Zap, BookOpen, Quote, Gamepad2, BarChart3 } from 'lucide-react';
+import { Zap, BookOpen, Quote, Gamepad2, BarChart3, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 
 /** Collision-safe entity ID: crypto.randomUUID with a non-secure-context fallback. */
 const generateEntityId = (prefix: string): string => {
@@ -52,6 +55,7 @@ export function App() {
   const [sentences, setSentences] = useState<Sentence[]>(() => StorageService.getSentences());
   const [gameRecords, setGameRecords] = useState<GameRecord[]>(() => StorageService.getGameRecords());
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>(() => StorageService.getCloudConfig());
+  const [enrichmentConfig, setEnrichmentConfig] = useState<EnrichmentConfig>(() => StorageService.getEnrichmentConfig());
 
   // Modals
   const [isWordModalOpen, setIsWordModalOpen] = useState(false);
@@ -60,6 +64,27 @@ export function App() {
   const [editingSentence, setEditingSentence] = useState<Sentence | null>(null);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isDebugModalOpen, setIsDebugModalOpen] = useState(false);
+  const [isEnrichmentModalOpen, setIsEnrichmentModalOpen] = useState(false);
+  const [batchModalState, setBatchModalState] = useState<{ isOpen: boolean; type: 'words' | 'sentences' }>({
+    isOpen: false,
+    type: 'words',
+  });
+
+  // Enrichment in-flight states
+  const [enrichingWordId, setEnrichingWordId] = useState<string | null>(null);
+  const [enrichingSentenceId, setEnrichingSentenceId] = useState<string | null>(null);
+
+  // In-app Toast notification
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  }, []);
 
   // Load Local Data
   const loadAllData = useCallback(() => {
@@ -67,6 +92,7 @@ export function App() {
     setSentences(StorageService.getSentences());
     setGameRecords(StorageService.getGameRecords());
     setCloudConfig(StorageService.getCloudConfig());
+    setEnrichmentConfig(StorageService.getEnrichmentConfig());
   }, []);
 
   // Sync lock: prevents overlapping pull/push from corrupting localStorage
@@ -114,14 +140,47 @@ export function App() {
         w.id === editingWord.id ? { ...data, id: editingWord.id, createdAt: editingWord.createdAt, updatedAt: now } : w
       );
       LoggerService.info('Words', `編輯單字: ${data.english}`);
+      showToast(`已儲存單字「${data.english}」`, 'success');
     } else {
       const newWord: Word = { ...data, id: generateEntityId('word'), createdAt: now, updatedAt: now };
       updated = [...currentWords, newWord];
       LoggerService.info('Words', `新增單字: ${data.english}`);
+      showToast(`成功新增單字「${data.english}」！`, 'success');
     }
     StorageService.saveWords(updated);
     setWords(StorageService.getWords());
     triggerCloudSync();
+  };
+
+  const handleEnrichWord = async (word: Word) => {
+    setEnrichingWordId(word.id);
+    try {
+      const enriched = await EnrichmentService.enrichWord(word.english, enrichmentConfig);
+      const now = new Date().toISOString();
+      const currentWords = StorageService.getWords();
+      const updated = currentWords.map((w) => {
+        if (w.id !== word.id) return w;
+        return {
+          ...w,
+          phonetic: w.phonetic || enriched.phonetic,
+          partOfSpeech: w.partOfSpeech || enriched.partOfSpeech,
+          meaning: w.meaning || enriched.meaning,
+          exampleSentence: w.exampleSentence || enriched.exampleSentence,
+          exampleTranslation: w.exampleTranslation || enriched.exampleTranslation,
+          category: w.category || enriched.category,
+          note: w.note || enriched.note,
+          updatedAt: now,
+        };
+      });
+      StorageService.saveWords(updated);
+      setWords(updated);
+      triggerCloudSync();
+      showToast(`已成功為「${word.english}」自動補齊音標、例句與筆記！`, 'success');
+    } catch (err) {
+      showToast(`自動補充失敗: ${(err as Error).message}`, 'error');
+    } finally {
+      setEnrichingWordId(null);
+    }
   };
 
   const handleDeleteWord = (id: string) => {
@@ -152,14 +211,63 @@ export function App() {
         s.id === editingSentence.id ? { ...data, id: editingSentence.id, createdAt: editingSentence.createdAt, updatedAt: now } : s
       );
       LoggerService.info('Sentences', `編輯句子`);
+      showToast('已儲存句子修改', 'success');
     } else {
       const newSentence: Sentence = { ...data, id: generateEntityId('sent'), createdAt: now, updatedAt: now };
       updated = [...currentSentences, newSentence];
       LoggerService.info('Sentences', `新增句子`);
+      showToast('成功新增句子！', 'success');
     }
     StorageService.saveSentences(updated);
     setSentences(StorageService.getSentences());
     triggerCloudSync();
+  };
+
+  const handleEnrichSentence = async (sentence: Sentence) => {
+    setEnrichingSentenceId(sentence.id);
+    try {
+      const enriched = await EnrichmentService.enrichSentence(sentence.english, enrichmentConfig);
+      const now = new Date().toISOString();
+      const currentSentences = StorageService.getSentences();
+      const updated = currentSentences.map((s) => {
+        if (s.id !== sentence.id) return s;
+        return {
+          ...s,
+          chinese: s.chinese || enriched.chinese,
+          category: s.category || enriched.category,
+          note: s.note || enriched.note,
+          updatedAt: now,
+        };
+      });
+      StorageService.saveSentences(updated);
+      setSentences(updated);
+      triggerCloudSync();
+      showToast('已為此句子自動補齊繁中翻譯與學習筆記！', 'success');
+    } catch (err) {
+      showToast(`自動補充失敗: ${(err as Error).message}`, 'error');
+    } finally {
+      setEnrichingSentenceId(null);
+    }
+  };
+
+  const handleSaveEnrichmentConfig = (newConfig: EnrichmentConfig) => {
+    StorageService.saveEnrichmentConfig(newConfig);
+    setEnrichmentConfig(newConfig);
+    showToast('已儲存自動尋找補充設定！', 'success');
+  };
+
+  const handleBatchWordsUpdated = (updatedWords: Word[]) => {
+    StorageService.saveWords(updatedWords);
+    setWords(updatedWords);
+    triggerCloudSync();
+    showToast('單字庫資訊已批量補充更新！', 'success');
+  };
+
+  const handleBatchSentencesUpdated = (updatedSentences: Sentence[]) => {
+    StorageService.saveSentences(updatedSentences);
+    setSentences(updatedSentences);
+    triggerCloudSync();
+    showToast('句子庫資訊已批量補充更新！', 'success');
   };
 
   const handleDeleteSentence = (id: string) => {
@@ -305,24 +413,25 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
       {/* Header Bar */}
       <Header
         cloudConfig={cloudConfig}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
         onOpenDebugLogs={() => setIsDebugModalOpen(true)}
+        onOpenEnrichmentModal={() => setIsEnrichmentModalOpen(true)}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
         {/* Navigation Tabs */}
-        <div className="flex items-center bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-x-auto">
+        <div className="flex items-center bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-md mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`flex-1 whitespace-nowrap flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'dashboard'
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                ? 'bg-brand-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <Zap className="w-4 h-4" />
@@ -333,8 +442,8 @@ export function App() {
             onClick={() => { setActiveTab('words'); focusInput('input[placeholder^="搜尋英文"]'); }}
             className={`flex-1 whitespace-nowrap flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'words'
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                ? 'bg-brand-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -345,8 +454,8 @@ export function App() {
             onClick={() => { setActiveTab('sentences'); focusInput('input[placeholder^="搜尋英文"]'); }}
             className={`flex-1 whitespace-nowrap flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'sentences'
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                ? 'bg-brand-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <Quote className="w-4 h-4" />
@@ -357,8 +466,8 @@ export function App() {
             onClick={() => setActiveTab('games')}
             className={`flex-1 whitespace-nowrap flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'games'
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                ? 'bg-brand-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <Gamepad2 className="w-4 h-4" />
@@ -369,8 +478,8 @@ export function App() {
             onClick={() => setActiveTab('history')}
             className={`flex-1 whitespace-nowrap flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'history'
-                ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                ? 'bg-brand-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
@@ -393,20 +502,26 @@ export function App() {
         {activeTab === 'words' && (
           <WordListView
             words={words}
+            enrichingWordId={enrichingWordId}
             onDeleteWord={handleDeleteWord}
             onToggleFavorite={handleToggleWordFavorite}
             onOpenAddModal={() => { setEditingWord(null); setIsWordModalOpen(true); }}
             onOpenEditModal={(w) => { setEditingWord(w); setIsWordModalOpen(true); }}
+            onEnrichWord={handleEnrichWord}
+            onOpenBatchEnrich={() => setBatchModalState({ isOpen: true, type: 'words' })}
           />
         )}
 
         {activeTab === 'sentences' && (
           <SentenceListView
             sentences={sentences}
+            enrichingSentenceId={enrichingSentenceId}
             onDeleteSentence={handleDeleteSentence}
             onToggleFavorite={handleToggleSentenceFavorite}
             onOpenAddModal={() => { setEditingSentence(null); setIsSentenceModalOpen(true); }}
             onOpenEditModal={(s) => { setEditingSentence(s); setIsSentenceModalOpen(true); }}
+            onEnrichSentence={handleEnrichSentence}
+            onOpenBatchEnrich={() => setBatchModalState({ isOpen: true, type: 'sentences' })}
           />
         )}
 
@@ -454,6 +569,7 @@ export function App() {
       <WordModal
         isOpen={isWordModalOpen}
         editingWord={editingWord}
+        enrichmentConfig={enrichmentConfig}
         onClose={() => setIsWordModalOpen(false)}
         onSubmit={handleSaveWord}
         onDelete={handleDeleteWord}
@@ -462,6 +578,7 @@ export function App() {
       <SentenceModal
         isOpen={isSentenceModalOpen}
         editingSentence={editingSentence}
+        enrichmentConfig={enrichmentConfig}
         onClose={() => setIsSentenceModalOpen(false)}
         onSubmit={handleSaveSentence}
         onDelete={handleDeleteSentence}
@@ -482,6 +599,48 @@ export function App() {
         isOpen={isDebugModalOpen}
         onClose={() => setIsDebugModalOpen(false)}
       />
+
+      <EnrichmentConfigModal
+        isOpen={isEnrichmentModalOpen}
+        config={enrichmentConfig}
+        onClose={() => setIsEnrichmentModalOpen(false)}
+        onSave={handleSaveEnrichmentConfig}
+      />
+
+      <BatchEnrichModal
+        isOpen={batchModalState.isOpen}
+        type={batchModalState.type}
+        words={words}
+        sentences={sentences}
+        config={enrichmentConfig}
+        onClose={() => setBatchModalState((prev) => ({ ...prev, isOpen: false }))}
+        onWordsUpdated={handleBatchWordsUpdated}
+        onSentencesUpdated={handleBatchSentencesUpdated}
+      />
+
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <div
+            className={`flex items-center space-x-2 px-4 py-3 rounded-2xl shadow-xl border text-xs font-semibold backdrop-blur-md ${
+              toast.type === 'success'
+                ? 'bg-emerald-600/95 text-white border-emerald-500 shadow-emerald-900/20'
+                : toast.type === 'error'
+                ? 'bg-rose-600/95 text-white border-rose-500 shadow-rose-900/20'
+                : 'bg-slate-800/95 text-white border-slate-700 shadow-slate-900/20'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />
+            ) : toast.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 text-rose-200 shrink-0" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+            )}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
