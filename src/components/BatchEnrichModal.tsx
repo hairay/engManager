@@ -92,6 +92,11 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
           fails++;
           setErrorCount(fails);
         }
+
+        // 批次請求微小節流 (350ms)，防止觸發免金鑰端點 429 頻率限制
+        if (i < candidateWords.length - 1 && !stopRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+        }
       }
 
       if (onWordsUpdated) {
@@ -125,6 +130,11 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
           fails++;
           setErrorCount(fails);
         }
+
+        // 批次請求微小節流 (350ms)，防止觸發免金鑰端點 429 頻率限制
+        if (i < candidateSentences.length - 1 && !stopRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+        }
       }
 
       if (onSentencesUpdated) {
@@ -144,24 +154,24 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 transition-all">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl shadow-slate-950/80 border-2 border-slate-300 dark:border-slate-700 border-t-4 border-t-brand-600 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl shadow-slate-950/80 border-2 border-slate-700 border-t-4 border-t-brand-600 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/90 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-800/90 border-b-2 border-slate-700 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-brand-950/60 text-brand-300 flex items-center justify-center font-bold">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-800 dark:text-white text-sm sm:text-base">
+              <h3 className="font-extrabold text-white text-sm sm:text-base">
                 一鍵批量尋找補充{type === 'words' ? '單字' : '句子'}資訊
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">自動掃描並補齊缺少音標、釋義或例句的項目</p>
+              <p className="text-[11px] text-slate-300 font-medium">自動掃描並補齊缺少音標、釋義或例句的項目</p>
             </div>
           </div>
           {!isRunning && (
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 text-sm font-semibold p-1 rounded-lg"
+              className="text-slate-400 hover:text-white text-sm font-semibold p-1 rounded-lg cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -240,13 +250,13 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-2">
+        <div className="px-6 py-3.5 bg-slate-800/90 border-t border-slate-700 flex items-center justify-end space-x-2">
           {!isRunning && !isFinished && (
             <>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-semibold cursor-pointer"
               >
                 取消
               </button>
@@ -254,7 +264,7 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
                 type="button"
                 onClick={handleStart}
                 disabled={totalCandidates === 0}
-                className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm shadow-brand-600/30 disabled:opacity-50 flex items-center space-x-1.5"
+                className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm shadow-brand-600/30 disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>開始自動尋找補充</span>
@@ -266,7 +276,7 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
             <button
               type="button"
               onClick={handleStop}
-              className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold"
+              className="px-4 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800 text-xs font-semibold cursor-pointer"
             >
               停止補充
             </button>
@@ -276,7 +286,7 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm shadow-brand-600/30"
+              className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm shadow-brand-600/30 cursor-pointer"
             >
               完成
             </button>

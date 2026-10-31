@@ -51,31 +51,31 @@ export const EnrichmentConfigModal: React.FC<EnrichmentConfigModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 transition-all">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl shadow-slate-950/80 border-2 border-slate-300 dark:border-slate-700 border-t-4 border-t-amber-500 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl shadow-slate-950/80 border-2 border-slate-700 border-t-4 border-t-amber-500 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/90 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-800/90 border-b-2 border-slate-700 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-amber-950/60 text-amber-400 flex items-center justify-center font-bold">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-800 dark:text-white text-sm sm:text-base">自動尋找補充與 AI 設定</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">自訂單字與句子的自動補充引擎</p>
+              <h3 className="font-extrabold text-white text-sm sm:text-base">自動尋找補充與 AI 設定</h3>
+              <p className="text-[11px] text-slate-300 font-medium">自訂單字與句子的自動補充引擎</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-sm font-extrabold flex items-center justify-center cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-extrabold flex items-center justify-center cursor-pointer"
           >
             ✕
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs text-slate-600 dark:text-slate-300">
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs text-slate-300">
           {/* Auto Enrich Toggle */}
-          <div className="flex items-start justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border-2 border-slate-200 dark:border-slate-700">
+          <div className="flex items-start justify-between p-3.5 rounded-xl bg-slate-800/60 border-2 border-slate-700">
             <div className="space-y-0.5 pr-3">
-              <div className="font-extrabold text-slate-800 dark:text-white text-xs sm:text-sm">
+              <div className="font-extrabold text-white text-xs sm:text-sm">
                 新增時自動補充未填欄位
               </div>
               <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
@@ -109,17 +109,17 @@ export const EnrichmentConfigModal: React.FC<EnrichmentConfigModalProps> = ({
           </div>
 
           {/* Engine 2: Gemini AI Key */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-3">
+          <div className="p-3.5 rounded-xl border border-slate-700 bg-slate-800/60 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <KeyRound className="w-4 h-4 text-purple-600" />
-                <span className="font-bold text-slate-800">可選：Google Gemini AI 擴充金鑰</span>
+                <KeyRound className="w-4 h-4 text-purple-400" />
+                <span className="font-bold text-white">可選：Google Gemini AI 擴充金鑰</span>
               </div>
-              <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-[10px] text-purple-300 bg-purple-950/60 border border-purple-800 px-2 py-0.5 rounded-full font-medium">
                 深度字源與記憶術
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               輸入您的個人 Google Gemini API Key（可於 Google AI Studio 免費申請）。設定後系統將優先由 AI
               提供更細膩的詞根詞綴解構、趣味記憶法與語境分析。留空則自動使用內建免費辭典。
             </p>
@@ -184,11 +184,11 @@ export const EnrichmentConfigModal: React.FC<EnrichmentConfigModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/90 border-t-2 border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3">
+        <div className="px-6 py-4 bg-slate-800/90 border-t-2 border-slate-700 flex items-center justify-end space-x-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold cursor-pointer"
+            className="px-5 py-2.5 rounded-xl border-2 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-bold cursor-pointer"
           >
             取消
           </button>

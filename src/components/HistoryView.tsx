@@ -62,7 +62,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       {/* 遊戲統計 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
-          <Gamepad2 className="w-4 h-4 text-brand-600" />
+          <Gamepad2 className="w-4 h-4 text-brand-400" />
           <span>遊戲複習成效</span>
         </h4>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -95,7 +95,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       {/* 熟練度分佈 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
-          <BarChart3 className="w-4 h-4 text-brand-600" />
+          <BarChart3 className="w-4 h-4 text-brand-400" />
           <span>熟練度分佈 (單字 {words.length} + 句子 {sentences.length})</span>
         </h4>
         <div className="space-y-2">
@@ -153,7 +153,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       {/* 資料備份還原 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
-          <FileJson className="w-4 h-4 text-sky-600" />
+          <FileJson className="w-4 h-4 text-sky-400" />
           <span>資料備份與還原</span>
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -219,10 +219,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center justify-between">
               <span className="text-xs font-bold text-rose-700">確定要清除本機所有學習資料嗎？此動作無法復原！(雲端資料不受影響)</span>
               <div className="flex space-x-2 shrink-0">
-                <button onClick={() => setConfirmingReset(false)} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-xs font-bold">
+                <button onClick={() => setConfirmingReset(false)} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-xs font-bold cursor-pointer">
                   取消
                 </button>
-                <button onClick={() => { setConfirmingReset(false); onResetAll(); }} className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold">
+                <button onClick={() => { setConfirmingReset(false); onResetAll(); }} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer">
                   確定重置
                 </button>
               </div>

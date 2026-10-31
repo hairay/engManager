@@ -121,12 +121,25 @@ export function App() {
 
     const interval = setInterval(
       () => {
+        // 頁面最小化或分頁切至背景時暫停輪詢，節省電力與 Supabase 配額
+        if (typeof document !== 'undefined' && document.hidden) return;
         triggerCloudSync();
       },
       Math.max(10, cloudConfig.syncIntervalSeconds) * 1000
     );
 
-    return () => clearInterval(interval);
+    // 當使用者切換回此分頁時立即觸發一次同步
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        triggerCloudSync();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [triggerCloudSync, cloudConfig.syncIntervalSeconds]);
 
   /* ---------------- Word CRUD ---------------- */
@@ -549,15 +562,15 @@ export function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+      <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>英語管家 EngManager © 2026 - 英文單字與句子雲端學習與遊戲複習系統</div>
           <div className="flex items-center space-x-3">
-            <button onClick={() => setIsDebugModalOpen(true)} className="hover:underline text-purple-600 font-semibold flex items-center space-x-1">
+            <button onClick={() => setIsDebugModalOpen(true)} className="hover:underline text-purple-400 font-semibold flex items-center space-x-1 cursor-pointer">
               <span>🛠️ 系統診斷與日誌</span>
             </button>
             <span>•</span>
-            <button onClick={() => setIsCloudModalOpen(true)} className="hover:underline text-sky-600 font-medium">
+            <button onClick={() => setIsCloudModalOpen(true)} className="hover:underline text-sky-400 font-medium cursor-pointer">
               ☁️ Supabase 遠端資料庫
             </button>
           </div>
