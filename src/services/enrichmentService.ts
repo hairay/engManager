@@ -119,6 +119,9 @@ async function translateText(
     LoggerService.warn('EnrichmentService', `Translation fallback failed: ${(err as Error).message}`);
   }
 
+  // 所有翻譯來源都取不到結果 → 明確記錄在日誌 (DebugLogModal 可見)，
+  // 讓使用者/開發者知道免費管線可能已被上游端點改版破壞。
+  LoggerService.warn('EnrichmentService', `所有翻譯來源皆無結果 (Google/MyMemory): "${clean}"，翻譯欄位將留空`);
   return { text: '', dictMeanings: [] };
 }
 
@@ -381,6 +384,13 @@ async function enrichWordWithFreeSources(word: string): Promise<WordEnrichResult
     } catch {
       result.exampleTranslation = '';
     }
+  }
+
+  // 6. 免費管線完整性警示：核心欄位 (中文釋義) 仍為空代表上游資料源
+  //    (Google Translate / DictionaryAPI 等) 全部失效或單字不在其收錄範圍，
+  //    寫入警告日誌方便從 DebugLogModal 觀察管線健康狀態。
+  if (!result.meaning) {
+    LoggerService.warn('EnrichmentService', `免費補充管線未取得釋義: "${cleanWord}" (資料源可能失效)`);
   }
 
   return result;

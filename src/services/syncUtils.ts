@@ -42,6 +42,16 @@ export class SyncUtils {
   ): T {
     const localTs = local.updatedAt || local.createdAt || '';
     const cloudTs = cloud.updatedAt || cloud.createdAt || '';
+
+    // 先以 Date.parse 數值比較 ISO 時間戳，避免「2026-01-01T00:00:00Z」與
+    // 「2026-01-01T00:00:00+00:00」等格式差異造成字串字典序誤判 (Z > + 因此勝出)。
+    const localNum = Date.parse(localTs);
+    const cloudNum = Date.parse(cloudTs);
+    if (!Number.isNaN(localNum) && !Number.isNaN(cloudNum)) {
+      // 同一時間點 (僅格式差異) 維持「平手保本機」語意
+      return localNum === cloudNum ? local : (localNum > cloudNum ? local : cloud);
+    }
+    // 任一方非 ISO 格式時，退回原有的字串比較 (平手保本機)
     return localTs >= cloudTs ? local : cloud;
   }
 

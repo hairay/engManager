@@ -24,6 +24,7 @@ export const resetSupabaseClient = () => {
 /** 容錯處理：相容全小寫或駝峰命名的遠端資料庫欄位 */
 const VALID_CATEGORIES: ReadonlySet<string> = new Set(['daily', 'travel', 'work', 'academic', 'exam', 'slang', 'other']);
 const VALID_PARTS_OF_SPEECH: ReadonlySet<string> = new Set(['noun', 'verb', 'adj', 'adv', 'prep', 'conj', 'phrase', 'other']);
+const VALID_GAME_TYPES: ReadonlySet<string> = new Set(['word_quiz', 'word_spelling', 'typing_practice', 'sentence_cloze', 'sentence_scramble']);
 
 /** 雲端髒值防禦：分類/詞性不符白名單時回落為 other，避免 label map 顯示 undefined */
 const asCategory = (value: unknown): Word['category'] =>
@@ -68,7 +69,8 @@ const normalizeSentence = (row: any): Sentence => ({
 
 const normalizeRecord = (row: any): GameRecord => ({
   id: String(row.id),
-  game: row.game,
+  // 遊戲類型白名單防禦：雲端髒值會讓 GAME_INFO 顯示 undefined，回落為 word_quiz
+  game: VALID_GAME_TYPES.has(row.game) ? row.game : 'word_quiz',
   score: Number(row.score) || 0,
   total: Number(row.total) || 0,
   durationSec: Number(row.durationSec ?? row.durationsec) || 0,
@@ -312,13 +314,22 @@ CREATE TABLE IF NOT EXISTS public.deleted_ids (
   PRIMARY KEY (scope, id)
 );
 
+-- 墓碑表維護 (可選，在 Supabase SQL Editor 手動執行):
+-- deleted_ids 會隨刪除動作持續增長，可定期清理 30 天前的舊墓碑以控制表大小。
+-- ⚠️ 風險：若有裝置超過 30 天未曾同步，其收不到的刪除通知會造成資料復活，
+--    請確認所有裝置同步狀態正常後再執行 (預設為註解，貼上執行才會生效)。
+-- DELETE FROM public.deleted_ids WHERE "deletedAt" < NOW() - INTERVAL '30 days';
+
 -- 開啟 Row Level Security (RLS)
 ALTER TABLE public.words ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sentences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deleted_ids ENABLE ROW LEVEL SECURITY;
 
--- 簡易個人專屬資料庫方案 (僅限持有 Anon Key 的客戶端存取)
+-- ⚠️⚠️ 安全警告：以下「anon 全公開」政策只是方便的個人過渡方案。
+-- Anon Key 存放於瀏覽器/Electron 前端，任何人都能從網路請求中取得；
+-- 搭配下方政策，持 key 者等於擁有整個資料庫的讀寫刪除權限。
+-- 請勿分享 Project URL 與 anon key；正式/多人使用請改用末段註解的 Auth 隔離方案。
 -- 政策一律先 DROP 再 CREATE，整份腳本可安全重複執行
 -- (CREATE POLICY 沒有 IF NOT EXISTS，直接重跑會報 42710 policy already exists)
 DROP POLICY IF EXISTS "Allow anon access on words" ON public.words;

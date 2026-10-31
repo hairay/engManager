@@ -237,14 +237,25 @@ export class StorageService {
     return isMockWords && isMockSentences;
   }
 
-  /** 安全地移除初始示範資料，保留任何使用者自行新增的資料 */
+  /** 安全地移除初始示範資料，保留任何使用者自行新增的資料。
+   *  移除時同步寫入刪除墓碑：若雲端是「真實+示範」混合狀態，
+   *  沒有墓碑的話下次同步會把被驅逐的示範資料從雲端拉回本機，形成復活迴圈。 */
   public static clearDemoData(): void {
     const demo = this.getDemoIds();
-    const realWords = this.getWords().filter((w) => !demo.wordIds.has(w.id));
-    const realSentences = this.getSentences().filter((s) => !demo.sentenceIds.has(s.id));
+    const removedWords = this.getWords().filter((w) => demo.wordIds.has(w.id));
+    const removedSentences = this.getSentences().filter((s) => demo.sentenceIds.has(s.id));
 
-    this.saveWords(realWords);
-    this.saveSentences(realSentences);
+    this.saveWords(this.getWords().filter((w) => !demo.wordIds.has(w.id)));
+    this.saveSentences(this.getSentences().filter((s) => !demo.sentenceIds.has(s.id)));
+
+    removedWords.forEach((w) => this.addDeletedWordId(w.id));
+    removedSentences.forEach((s) => this.addDeletedSentenceId(s.id));
+    if (removedWords.length > 0 || removedSentences.length > 0) {
+      LoggerService.info(
+        'Storage',
+        `已驅逐示範資料並記錄墓碑: 單字 ${removedWords.length}、句子 ${removedSentences.length}`
+      );
+    }
   }
 
   // --- Reset / Backup / Restore ---

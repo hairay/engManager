@@ -44,7 +44,10 @@ const downloadFile = (content: string, filename: string, mime: string) => {
 
 const csvEscape = (value: unknown): string => {
   const str = value === null || value === undefined ? '' : String(value).trim();
-  return `"${str.replace(/"/g, '""')}"`;
+  // 防 CSV Formula Injection：Excel 會把以 = + - @ 開頭的儲存格當公式執行，
+  // 臟值可能來自雲端同步或匯入的備份，統一加上 ' 前綴使其降級為純文字
+  const safe = /^[=+\-@]/.test(str) ? `'${str}` : str;
+  return `"${safe.replace(/"/g, '""')}"`;
 };
 
 export function App() {
@@ -114,6 +117,20 @@ export function App() {
   }, [loadAllData]);
 
   // Load Data on Mount & Auto Sync Polling
+  // 遊戲作答等高頻寫入改用 debounced 同步：合併短時間內的連續答題，
+  // 避免每一題都執行一次「三表全量拉取 + 全量 upsert」的完整同步徒增延遲與配額消耗
+  const syncDebounceTimerRef = useRef<number | null>(null);
+  const triggerCloudSyncDebounced = useCallback(
+    (delayMs = 5000) => {
+      if (syncDebounceTimerRef.current !== null) return; // 已有待同步排程，不重複堆疊
+      syncDebounceTimerRef.current = window.setTimeout(() => {
+        syncDebounceTimerRef.current = null;
+        triggerCloudSync();
+      }, delayMs);
+    },
+    [triggerCloudSync]
+  );
+
   useEffect(() => {
     LoggerService.info('App', '英語管家 EngManager 應用啟動');
     SpeechService.warmUp();
@@ -139,6 +156,10 @@ export function App() {
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (syncDebounceTimerRef.current !== null) {
+        clearTimeout(syncDebounceTimerRef.current);
+        syncDebounceTimerRef.current = null;
+      }
     };
   }, [triggerCloudSync, cloudConfig.syncIntervalSeconds]);
 
@@ -316,7 +337,7 @@ export function App() {
     };
     StorageService.saveWords(currentWords);
     setWords([...currentWords]);
-    triggerCloudSync();
+    triggerCloudSyncDebounced();
   };
 
   const handleSentenceResult = (sentenceId: string, isCorrect: boolean) => {
@@ -334,7 +355,7 @@ export function App() {
     };
     StorageService.saveSentences(currentSentences);
     setSentences([...currentSentences]);
-    triggerCloudSync();
+    triggerCloudSyncDebounced();
   };
 
   const handleAddGameRecord = (game: GameType, score: number, total: number, durationSec: number) => {

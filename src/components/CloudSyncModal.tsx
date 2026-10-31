@@ -98,6 +98,11 @@ const CloudSyncModalContent: React.FC<Omit<CloudSyncModalProps, 'isOpen'>> = ({
             <p className="leading-relaxed rounded-lg bg-amber-950/50 border border-amber-800 text-amber-200 px-2.5 py-1.5">
               ⚠️ 安全提示：下方 SQL 採「anon 全公開」策略，任何取得 Project URL 與 anon key 的人都能讀寫整個資料庫。請勿將金鑰分享或公開貼出；多人使用時建議改用 Supabase Auth 並加入 user_id 隔離資料（見 SQL 腳本末段註解）。
             </p>
+            {cloudConfig.enabled && (
+              <p className="leading-relaxed rounded-lg bg-rose-950/50 border border-rose-800 text-rose-200 px-2.5 py-1.5">
+                🔓 雲端同步目前已啟用。您的學習資料正存放在「anon 全公開」的資料庫中，等同對任何持金鑰者公開；若資料內容敏感，請改用 Supabase Auth 隔離方案後再啟用同步。
+              </p>
+            )}
           </div>
 
           {/* 啟用開關 (全卡片點擊切換) */}
