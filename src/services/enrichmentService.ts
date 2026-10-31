@@ -414,7 +414,7 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
   "note": "詞根詞綴、記憶聯想術或易混淆字解析 (繁體中文)"
 }`;
 
-  const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
   for (const model of models) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
@@ -469,7 +469,7 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
   "note": "重點文法結構、核心片語拆解或用法重點提示 (繁體中文)"
 }`;
 
-  const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
   for (const model of models) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
@@ -615,7 +615,7 @@ export class EnrichmentService {
     }
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -625,7 +625,7 @@ export class EnrichmentService {
       });
 
       if (res.ok) {
-        return { success: true, message: 'Gemini API 金鑰驗證成功！' };
+        return { success: true, message: 'Gemini API 金鑰驗證成功 (2.0 Flash)！' };
       }
 
       // Try 1.5 fallback

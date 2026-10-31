@@ -60,29 +60,29 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   return (
     <div className="space-y-4">
       {/* 遊戲統計 */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+        <h4 className="font-bold text-sm text-slate-800 dark:text-white flex items-center space-x-2 mb-3">
           <Gamepad2 className="w-4 h-4 text-brand-400" />
           <span>遊戲複習成效</span>
         </h4>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {gameStats.map((g) => (
-            <div key={g.game} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
-              <div className="text-xs font-bold text-slate-700">
+            <div key={g.game} className="bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700/60 p-3">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
                 {GAME_INFO[g.game].emoji} {GAME_INFO[g.game].title}
               </div>
               <div className="mt-2 flex items-end justify-between">
                 <div>
                   <div className="text-[10px] text-slate-400 font-semibold">累積場次</div>
-                  <div className="text-lg font-extrabold text-slate-800">{g.rounds}</div>
+                  <div className="text-lg font-extrabold text-slate-800 dark:text-white">{g.rounds}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-slate-400 font-semibold">平均準確率</div>
-                  <div className={`text-lg font-extrabold ${g.acc >= 80 ? 'text-emerald-600' : g.acc >= 60 ? 'text-amber-600' : 'text-rose-500'}`}>{g.acc}%</div>
+                  <div className={`text-lg font-extrabold ${g.acc >= 80 ? 'text-emerald-600 dark:text-emerald-400' : g.acc >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-500 dark:text-rose-400'}`}>{g.acc}%</div>
                 </div>
               </div>
               {g.best && (
-                <div className="mt-1.5 text-[10px] font-semibold text-amber-600 flex items-center space-x-1">
+                <div className="mt-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 flex items-center space-x-1">
                   <Trophy className="w-3 h-3" />
                   <span>最佳 {g.best.score}/{g.best.total} • {g.best.date}</span>
                 </div>
@@ -93,8 +93,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       </div>
 
       {/* 熟練度分佈 */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+        <h4 className="font-bold text-sm text-slate-800 dark:text-white flex items-center space-x-2 mb-3">
           <BarChart3 className="w-4 h-4 text-brand-400" />
           <span>熟練度分佈 (單字 {words.length} + 句子 {sentences.length})</span>
         </h4>
@@ -103,25 +103,25 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <div key={d.level} className="flex items-center gap-3">
               <div className="w-16 flex items-center space-x-1.5 shrink-0">
                 <span className={`w-2.5 h-2.5 rounded-full ${LEVEL_COLORS[d.level]}`} />
-                <span className="text-[11px] font-bold text-slate-600">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
                   {d.level} {LEVEL_LABELS[d.level]}
                 </span>
               </div>
-              <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
+              <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden">
                 <div
                   className={`h-4 rounded-full ${LEVEL_COLORS[d.level]} transition-all duration-500`}
                   style={{ width: `${d.pct}%` }}
                 />
               </div>
-              <span className="text-[11px] font-bold text-slate-500 w-14 text-right shrink-0">{d.count} 個 ({d.pct}%)</span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-14 text-right shrink-0">{d.count} 個 ({d.pct}%)</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* 遊戲記錄列表 */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+        <h4 className="font-bold text-sm text-slate-800 dark:text-white flex items-center space-x-2 mb-3">
           <Trophy className="w-4 h-4 text-amber-500" />
           <span>遊戲歷史記錄 ({gameRecords.length} 場)</span>
         </h4>
@@ -132,15 +132,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             {sortedRecords.map((r) => {
               const acc = r.total > 0 ? Math.round((r.score / r.total) * 100) : 0;
               return (
-                <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
+                <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
                   <div className="flex items-center space-x-2">
                     <span className="text-base">{GAME_INFO[r.game].emoji}</span>
                     <div>
-                      <div className="text-xs font-bold text-slate-700">{GAME_INFO[r.game].title}</div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{GAME_INFO[r.game].title}</div>
                       <div className="text-[10px] text-slate-400">{r.date} {r.time} • 用時 {r.durationSec} 秒</div>
                     </div>
                   </div>
-                  <div className={`text-xs font-extrabold ${acc >= 80 ? 'text-emerald-600' : acc >= 60 ? 'text-amber-600' : 'text-rose-500'}`}>
+                  <div className={`text-xs font-extrabold ${acc >= 80 ? 'text-emerald-600 dark:text-emerald-400' : acc >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-500 dark:text-rose-400'}`}>
                     {r.score}/{r.total} ({acc}%)
                   </div>
                 </div>
@@ -151,21 +151,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       </div>
 
       {/* 資料備份還原 */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <h4 className="font-bold text-sm text-slate-800 flex items-center space-x-2 mb-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+        <h4 className="font-bold text-sm text-slate-800 dark:text-white flex items-center space-x-2 mb-3">
           <FileJson className="w-4 h-4 text-sky-400" />
           <span>資料備份與還原</span>
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button
             onClick={onExportBackup}
-            className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-xs font-bold transition-all"
+            className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold transition-all cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>匯出完整備份 (JSON)</span>
           </button>
 
-          <label className="flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold transition-all cursor-pointer">
+          <label className="flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer">
             <Upload className="w-4 h-4" />
             <span>匯入 備份 JSON 還原</span>
             <input
@@ -188,7 +188,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
           <button
             onClick={() => onExportCSV('words')}
-            className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-xs font-bold transition-all"
+            className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-bold transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <BookOpen className="w-3.5 h-3.5" />
@@ -197,7 +197,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
           <button
             onClick={() => onExportCSV('sentences')}
-            className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-bold transition-all"
+            className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 dark:hover:bg-violet-900/60 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs font-bold transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <Quote className="w-3.5 h-3.5" />
@@ -206,18 +206,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         </div>
 
         {/* Danger zone */}
-        <div className="mt-4 pt-3 border-t border-slate-100">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
           {!confirmingReset ? (
             <button
               onClick={() => setConfirmingReset(true)}
-              className="flex items-center space-x-2 text-xs font-semibold text-rose-500 hover:text-rose-600"
+              className="flex items-center space-x-2 text-xs font-semibold text-rose-500 hover:text-rose-600 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>重置本機資料 (清除所有單字、句子與遊戲記錄)</span>
             </button>
           ) : (
-            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-rose-700">確定要清除本機所有學習資料嗎？此動作無法復原！(雲端資料不受影響)</span>
+            <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl p-3 flex items-center justify-between">
+              <span className="text-xs font-bold text-rose-700 dark:text-rose-300">確定要清除本機所有學習資料嗎？此動作無法復原！(雲端資料不受影響)</span>
               <div className="flex space-x-2 shrink-0">
                 <button onClick={() => setConfirmingReset(false)} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-xs font-bold cursor-pointer">
                   取消

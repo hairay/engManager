@@ -99,7 +99,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -108,7 +108,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="搜尋英文、中文、音標或筆記..."
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white rounded-xl text-sm focus:ring-2 focus:ring-brand-500 outline-none"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -133,10 +133,10 @@ export const WordListView: React.FC<WordListViewProps> = ({
             {/* Batch Auto Enrich button */}
             <button
               onClick={onOpenBatchEnrich}
-              className="flex items-center space-x-1.5 px-3 py-2.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold transition-all"
+              className="flex items-center space-x-1.5 px-3 py-2.5 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 text-xs font-bold transition-all cursor-pointer"
               title="批量連網尋找補充缺漏的音標或例句"
             >
-              <Sparkles className="w-4 h-4 text-brand-600" />
+              <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
               <span className="hidden sm:inline">批量補充</span>
               {missingInfoCount > 0 && (
                 <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">
@@ -147,7 +147,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
 
             <button
               onClick={onOpenAddModal}
-              className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-600/30 transition-all shrink-0"
+              className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-600/30 transition-all shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>新增單字</span>
@@ -161,10 +161,10 @@ export const WordListView: React.FC<WordListViewProps> = ({
             <button
               key={c.key}
               onClick={() => setCategoryFilter(c.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
                 categoryFilter === c.key
                   ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               {c.label}
@@ -175,8 +175,8 @@ export const WordListView: React.FC<WordListViewProps> = ({
 
       {/* Count */}
       <div className="flex items-center justify-between gap-3 px-1">
-        <div className="text-xs font-semibold text-slate-500 flex items-center space-x-1.5">
-          <BookOpen className="w-3.5 h-3.5 text-brand-600" />
+        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
+          <BookOpen className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
           <span>共 {filteredWords.length} 個單字 (全部 {words.length})</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -186,8 +186,8 @@ export const WordListView: React.FC<WordListViewProps> = ({
             title={includeExample ? '連續朗讀將包含例句 (點擊關閉)' : '連續朗讀僅播放單字 (點擊加入例句)'}
             className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer ${
               includeExample
-                ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'
-                : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
+                ? 'bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/60'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
           >
             <MessageSquareQuote className="w-4 h-4" />
@@ -201,10 +201,10 @@ export const WordListView: React.FC<WordListViewProps> = ({
 
       {/* Word Grid */}
       {filteredWords.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-2">
-          <GraduationCap className="w-10 h-10 text-slate-300 mx-auto" />
-          <div className="text-sm font-semibold text-slate-500">沒有符合條件的單字</div>
-          <div className="text-xs text-slate-400">試著切換分類或加入新的單字吧！</div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center space-y-2">
+          <GraduationCap className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+          <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">沒有符合條件的單字</div>
+          <div className="text-xs text-slate-400 dark:text-slate-500">試著切換分類或加入新的單字吧！</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -212,10 +212,10 @@ export const WordListView: React.FC<WordListViewProps> = ({
             <div
               key={word.id}
               data-seq-idx={i}
-              className={`bg-white rounded-2xl border shadow-sm transition-all p-4 flex flex-col ${
+              className={`bg-white dark:bg-slate-900 rounded-2xl border shadow-sm transition-all p-4 flex flex-col ${
                 seqIndex === i
-                  ? 'border-brand-400 ring-2 ring-brand-500/60 shadow-md bg-brand-50/40'
-                  : 'border-slate-200 hover:shadow-md'
+                  ? 'border-brand-400 ring-2 ring-brand-500/60 shadow-md bg-brand-50/40 dark:bg-brand-950/40'
+                  : 'border-slate-200 dark:border-slate-800 hover:shadow-md'
               }`}
             >
               {/* Top row: english + actions */}
@@ -225,11 +225,11 @@ export const WordListView: React.FC<WordListViewProps> = ({
                     <button
                       onClick={() => SpeechService.speak(word.english)}
                       title="朗讀發音"
-                      className="shrink-0 p-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 transition-colors"
+                      className="shrink-0 p-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-600 dark:text-brand-400 transition-colors cursor-pointer"
                     >
                       <Volume2 className="w-4 h-4" />
                     </button>
-                    <span className="font-bold text-slate-800 text-lg truncate">{word.english}</span>
+                    <span className="font-bold text-slate-800 dark:text-white text-lg truncate">{word.english}</span>
                   </div>
                   <div className="text-[11px] text-slate-400 font-mono mt-0.5 ml-1">{word.phonetic || '—'}</div>
                 </div>
@@ -239,7 +239,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
                     onClick={() => onEnrichWord(word)}
                     disabled={enrichingWordId === word.id}
                     title="自動尋找補充音標、釋義與例句"
-                    className="p-1.5 rounded-lg text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {enrichingWordId === word.id ? (
                       <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
@@ -250,8 +250,10 @@ export const WordListView: React.FC<WordListViewProps> = ({
                   <button
                     onClick={() => onToggleFavorite(word.id)}
                     title={word.favorite ? '取消收藏' : '加入收藏'}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      word.favorite ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-400 hover:bg-amber-50'
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                      word.favorite
+                        ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/60'
+                        : 'text-slate-300 dark:text-slate-600 hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
                     }`}
                   >
                     <Star className="w-4 h-4" fill={word.favorite ? 'currentColor' : 'none'} />
@@ -259,7 +261,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
                   <button
                     onClick={() => onOpenEditModal(word)}
                     title="編輯"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
@@ -268,7 +270,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
                       if (confirm(`確定要刪除「${word.english}」嗎？`)) onDeleteWord(word.id);
                     }}
                     title="刪除"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -277,10 +279,10 @@ export const WordListView: React.FC<WordListViewProps> = ({
 
               {/* Meaning + POS chip */}
               <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
                   {PART_OF_SPEECH_LABELS[word.partOfSpeech]}
                 </span>
-                <span className="text-sm font-semibold text-brand-800">{word.meaning}</span>
+                <span className="text-sm font-semibold text-brand-800 dark:text-brand-300">{word.meaning}</span>
               </div>
 
               {/* Example */}
@@ -299,7 +301,7 @@ export const WordListView: React.FC<WordListViewProps> = ({
                       type="button"
                       onClick={() => SpeechService.speak(word.exampleSentence, 0.85)}
                       title="朗讀例句發音"
-                      className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                      className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-brand-600 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
                     </button>
@@ -311,14 +313,14 @@ export const WordListView: React.FC<WordListViewProps> = ({
               <div className="mt-auto pt-3 flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
                   <span className={`w-2.5 h-2.5 rounded-full ${LEVEL_COLORS[word.level] || 'bg-slate-300'}`} />
-                  <span className="text-[11px] font-bold text-slate-600">{LEVEL_LABELS[word.level] || '生疏'}</span>
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">{LEVEL_LABELS[word.level] || '生疏'}</span>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${WORD_CATEGORY_COLORS[word.category]}`}>
                   {WORD_CATEGORY_LABELS[word.category]}
                 </span>
               </div>
               {word.note && (
-                <div className="mt-2 text-[11px] text-slate-400 italic border-t border-slate-100 pt-2">📝 {word.note}</div>
+                <div className="mt-2 text-[11px] text-slate-400 italic border-t border-slate-100 dark:border-slate-800 pt-2">📝 {word.note}</div>
               )}
             </div>
           ))}
