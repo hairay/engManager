@@ -7,6 +7,14 @@ import type {
 } from '../types';
 import { LoggerService } from './loggerService';
 
+/** Available Gemini models prioritized by recommendation and recency */
+export const GEMINI_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+] as const;
+
 // CMU / Arpabet to IPA mapping for Datamuse phonetic pronunciation tags
 const ARPABET_TO_IPA: Record<string, string> = {
   AA: 'ɑ',
@@ -414,8 +422,7 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
   "note": "詞根詞綴、記憶聯想術或易混淆字解析 (繁體中文)"
 }`;
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-  for (const model of models) {
+  for (const model of GEMINI_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
       const res = await fetch(url, {
@@ -435,7 +442,8 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) continue;
 
-      const parsed = JSON.parse(rawText.trim());
+      const cleanedText = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      const parsed = JSON.parse(cleanedText);
       return {
         english: word.trim(),
         phonetic: parsed.phonetic || '',
@@ -469,8 +477,7 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
   "note": "重點文法結構、核心片語拆解或用法重點提示 (繁體中文)"
 }`;
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-  for (const model of models) {
+  for (const model of GEMINI_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
       const res = await fetch(url, {
@@ -490,7 +497,8 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) continue;
 
-      const parsed = JSON.parse(rawText.trim());
+      const cleanedText = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+      const parsed = JSON.parse(cleanedText);
       return {
         english: parsed.english || sentence.trim(),
         chinese: parsed.chinese || '',
@@ -561,6 +569,8 @@ export class EnrichmentService {
         if (aiResult) {
           LoggerService.info('EnrichmentService', `AI 自動補充單字成功: ${trimmed}`);
           return aiResult;
+        } else {
+          LoggerService.warn('EnrichmentService', `Gemini API 回傳空值或模型皆失敗，切換為內建辭典`);
         }
       } catch (err) {
         LoggerService.warn(
@@ -592,6 +602,8 @@ export class EnrichmentService {
         if (aiResult) {
           LoggerService.info('EnrichmentService', `AI 自動翻譯與補充句子成功`);
           return aiResult;
+        } else {
+          LoggerService.warn('EnrichmentService', `Gemini API 回傳空值或模型皆失敗，切換為內建翻譯`);
         }
       } catch (err) {
         LoggerService.warn(
@@ -610,43 +622,49 @@ export class EnrichmentService {
   public static async testGeminiApiKey(
     apiKey: string
   ): Promise<{ success: boolean; message: string }> {
-    if (!apiKey.trim()) {
+    const key = apiKey.trim();
+    if (!key) {
       return { success: false, message: '請輸入金鑰' };
     }
 
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Respond with "OK"' }] }],
-        }),
-      });
+    let lastErrorMessage = '';
+    for (const model of GEMINI_MODELS) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Respond with "OK"' }] }],
+          }),
+        });
 
-      if (res.ok) {
-        return { success: true, message: 'Gemini API 金鑰驗證成功 (2.0 Flash)！' };
+        if (res.ok) {
+          const modelLabel = model.replace(/^gemini-/, '').replace(/-flash$/, ' Flash');
+          return { success: true, message: `Gemini API 金鑰驗證成功 (${modelLabel})！` };
+        }
+
+        const errData = await res.json().catch(() => null);
+        const errMsg = errData?.error?.message || `HTTP ${res.status}`;
+        lastErrorMessage = errMsg;
+
+        // If the error indicates invalid key or unauthorized, stop immediately
+        if (
+          errMsg.includes('API_KEY_INVALID') ||
+          errMsg.includes('API key not valid') ||
+          res.status === 401 ||
+          res.status === 403
+        ) {
+          return { success: false, message: `金鑰無效: ${errMsg}` };
+        }
+      } catch (err) {
+        lastErrorMessage = (err as Error).message;
       }
-
-      // Try 1.5 fallback
-      const url15 = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
-      const res15 = await fetch(url15, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Respond with "OK"' }] }],
-        }),
-      });
-
-      if (res15.ok) {
-        return { success: true, message: 'Gemini API 金鑰驗證成功 (1.5 Flash)！' };
-      }
-
-      const errData = await res.json().catch(() => null);
-      const errMsg = errData?.error?.message || `HTTP ${res.status}`;
-      return { success: false, message: `驗證失敗: ${errMsg}` };
-    } catch (err) {
-      return { success: false, message: `連線失敗: ${(err as Error).message}` };
     }
+
+    return {
+      success: false,
+      message: `驗證失敗: ${lastErrorMessage || '所有模型皆無法連線'}`,
+    };
   }
 }
