@@ -15,8 +15,12 @@ export const GEMINI_MODELS = [
   'gemini-1.5-flash',
 ] as const;
 
-// CMU / Arpabet to IPA mapping for Datamuse phonetic pronunciation tags
-const ARPABET_TO_IPA: Record<string, string> = {
+// CMU / Arpabet to KK mapping for Datamuse phonetic pronunciation tags
+const VOWEL_PHONEMES = new Set([
+  'AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH', 'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW',
+]);
+
+const ARPABET_TO_KK: Record<string, string> = {
   AA: 'ɑ',
   AE: 'æ',
   AH: 'ʌ',
@@ -28,8 +32,8 @@ const ARPABET_TO_IPA: Record<string, string> = {
   D: 'd',
   DH: 'ð',
   EH: 'ɛ',
-  ER: 'ɜr',
-  EY: 'eɪ',
+  ER: 'ɝ',
+  EY: 'e',
   F: 'f',
   G: 'ɡ',
   HH: 'h',
@@ -41,7 +45,7 @@ const ARPABET_TO_IPA: Record<string, string> = {
   M: 'm',
   N: 'n',
   NG: 'ŋ',
-  OW: 'oʊ',
+  OW: 'o',
   OY: 'ɔɪ',
   P: 'p',
   R: 'r',
@@ -58,22 +62,95 @@ const ARPABET_TO_IPA: Record<string, string> = {
   ZH: 'ʒ',
 };
 
-/** Convert Arpabet string (e.g., 'pron:R IH0 Z IH1 L Y AH0 N T ') to IPA (/rɪzˈɪljənt/) */
-function arpabetToIpa(arpabetStr: string): string {
-  const tokens = arpabetStr.trim().replace(/^pron:/, '').split(/\s+/);
-  let ipa = '';
+/** Convert Arpabet string (e.g., 'pron:R IH0 Z IH1 L Y AH0 N T ') to standard American KK phonetic notation (/rɪˈzɪljənt/) */
+function arpabetToKk(arpabetStr: string): string {
+  const tokens = arpabetStr.trim().replace(/^pron:/, '').split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return '';
+
+  let vowelCount = 0;
   for (const t of tokens) {
-    if (!t) continue;
+    const p = t.replace(/[0-2]$/, '');
+    if (VOWEL_PHONEMES.has(p)) vowelCount++;
+  }
+
+  let result = '';
+  let pendingConsonants = '';
+
+  for (const t of tokens) {
     const match = t.match(/^([A-Z]+)([0-2])?$/);
     if (!match) continue;
     const [, phoneme, stress] = match;
-    let symbol = ARPABET_TO_IPA[phoneme] || phoneme.toLowerCase();
-    if (phoneme === 'AH' && stress === '0') symbol = 'ə';
-    if (stress === '1') ipa += 'ˈ';
-    else if (stress === '2') ipa += 'ˌ';
-    ipa += symbol;
+
+    if (VOWEL_PHONEMES.has(phoneme)) {
+      let symbol = ARPABET_TO_KK[phoneme] || phoneme.toLowerCase();
+      if (phoneme === 'AH') {
+        symbol = stress === '0' ? 'ə' : 'ʌ';
+      } else if (phoneme === 'ER') {
+        symbol = stress === '0' ? 'ɚ' : 'ɝ';
+      }
+
+      // In KK, single-syllable words typically do not display stress marks
+      let stressMark = '';
+      if (vowelCount > 1) {
+        if (stress === '1') stressMark = 'ˈ';
+        else if (stress === '2') stressMark = 'ˌ';
+      }
+
+      result += stressMark + pendingConsonants + symbol;
+      pendingConsonants = '';
+    } else {
+      const symbol = ARPABET_TO_KK[phoneme] || phoneme.toLowerCase();
+      pendingConsonants += symbol;
+    }
   }
-  return ipa ? `/${ipa}/` : '';
+
+  result += pendingConsonants;
+  return result ? `/${result}/` : '';
+}
+
+/** Clean and normalize raw phonetic or IPA string to standard American KK phonetic notation */
+function cleanToKk(raw: string): string {
+  if (!raw) return '';
+  let s = raw.trim();
+
+  // Strip wrapping slashes or brackets
+  while (s.startsWith('/') || s.startsWith('[') || s.startsWith(' ')) {
+    s = s.slice(1);
+  }
+  while (s.endsWith('/') || s.endsWith(']') || s.endsWith(' ')) {
+    s = s.slice(0, -1);
+  }
+  s = s.trim();
+  if (!s) return '';
+
+  // Remove syllable boundary dots
+  s = s.replace(/\./g, '');
+
+  // Parenthesized r, e.g. (r) -> r
+  s = s.replace(/\(r\)/g, 'r');
+
+  // British ɜːr, ɜː, ɜr -> ɝ
+  s = s.replace(/ɜː?r?/g, 'ɝ');
+
+  // Unstressed r-colored vowel ər -> ɚ
+  s = s.replace(/ər(?=[^aeiouɑæɛɪiɔoʊuʌə]|$)/g, 'ɚ');
+
+  // Remove length marks
+  s = s.replace(/ː/g, '');
+
+  // British ɒ -> ɑ (hot, box, lot in American/KK)
+  s = s.replace(/ɒ/g, 'ɑ');
+
+  // Diphthongs to KK
+  s = s.replace(/eə/g, 'ɛr');
+  s = s.replace(/ɪə/g, 'ɪr');
+  s = s.replace(/ʊə/g, 'ʊr');
+
+  // Standardize eɪ / oʊ to KK e / o
+  s = s.replace(/eɪ/g, 'e');
+  s = s.replace(/oʊ/g, 'o');
+
+  return `/${s}/`;
 }
 
 /** Translate text via public Google Translate web endpoints (with multi-client rotation) & MyMemory fallback */
@@ -279,13 +356,26 @@ async function enrichWordWithFreeSources(word: string): Promise<WordEnrichResult
     }
   }
 
-  // Process DictionaryAPI results (phonetic, POS, synonyms, notes)
+  // Process Datamuse results (prefer American Arpabet directly converted to standard KK)
+  if (Array.isArray(datamuseData) && datamuseData[0]?.tags) {
+    const pronTag = datamuseData[0].tags.find((t: string) => t.startsWith('pron:'));
+    if (pronTag) {
+      result.phonetic = arpabetToKk(pronTag);
+    }
+  }
+
+  // Process DictionaryAPI results (phonetic fallback to KK, POS, synonyms, notes)
   if (dictData && Array.isArray(dictData) && dictData[0]) {
     const entry = dictData[0];
-    result.phonetic =
-      entry.phonetic ||
-      entry.phonetics?.find((p: { text?: string }) => p.text)?.text ||
-      '';
+    if (!result.phonetic) {
+      const rawPhonetic =
+        entry.phonetic ||
+        entry.phonetics?.find((p: { text?: string }) => p.text)?.text ||
+        '';
+      if (rawPhonetic) {
+        result.phonetic = cleanToKk(rawPhonetic);
+      }
+    }
 
     const posList: string[] = [];
     const synonyms: string[] = [];
@@ -308,14 +398,6 @@ async function enrichWordWithFreeSources(word: string): Promise<WordEnrichResult
     if (synonyms.length > 0) {
       const uniqueSynonyms = Array.from(new Set(synonyms)).slice(0, 4);
       result.note = `同義詞: ${uniqueSynonyms.join(', ')}`;
-    }
-  }
-
-  // Fallback phonetic from Datamuse if still empty
-  if (!result.phonetic && Array.isArray(datamuseData) && datamuseData[0]?.tags) {
-    const pronTag = datamuseData[0].tags.find((t: string) => t.startsWith('pron:'));
-    if (pronTag) {
-      result.phonetic = arpabetToIpa(pronTag);
     }
   }
 
@@ -413,7 +495,7 @@ async function enrichWordWithGemini(
 Analyze the following English word or phrase: "${word.trim()}".
 Return ONLY a valid JSON object without markdown, code fences, or extra text:
 {
-  "phonetic": "KK/IPA phonetic notation e.g. /əˈbʌndənt/",
+  "phonetic": "標準美式 KK 音標 (Kenyon and Knott，例如 /ˈkæt/、/əˈbʌndənt/、/bʊk/、/bɝd/、/ˈmʌðɚ/)，前後需加上斜線 //，請勿使用英式 DJ/IPA 符號 (如 ɒ, iː, ɔː, ɜː 等)",
   "partOfSpeech": "noun" | "verb" | "adj" | "adv" | "prep" | "conj" | "phrase" | "other",
   "meaning": "常用繁體中文釋義 (1-3個，頓號隔開)",
   "exampleSentence": "實用地道的英文例句",
@@ -446,7 +528,7 @@ Return ONLY a valid JSON object without markdown, code fences, or extra text:
       const parsed = JSON.parse(cleanedText);
       return {
         english: word.trim(),
-        phonetic: parsed.phonetic || '',
+        phonetic: cleanToKk(parsed.phonetic || ''),
         partOfSpeech: (parsed.partOfSpeech || 'noun') as PartOfSpeech,
         meaning: parsed.meaning || '',
         exampleSentence: parsed.exampleSentence || '',

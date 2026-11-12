@@ -201,7 +201,7 @@ export const BatchEnrichModal: React.FC<BatchEnrichModalProps> = ({
                 </div>
               ) : (
                 <div className="text-xs text-slate-500 space-y-1 pl-1">
-                  <div>📌 補齊項目包含：音標 (IPA/KK)、中文釋義、生活例句、同義詞與文法筆記。</div>
+                  <div>📌 補齊項目包含：KK 音標、中文釋義、生活例句、同義詞與文法筆記。</div>
                   <div>⚡ 過程可隨時暫停，完成後將自動更新清單並同步至雲端。</div>
                 </div>
               )}

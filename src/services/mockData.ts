@@ -57,13 +57,13 @@ const mkSentence = (
 export const INITIAL_WORDS: Word[] = [
   mkWord('word-demo-1', 'abundant', '/əˈbʌndənt/', 'adj', '豐富的、充裕的', 'Rainfall is abundant in this region.', '這個地區雨量充沛。', 'academic', 1),
   mkWord('word-demo-2', 'reluctant', '/rɪˈlʌktənt/', 'adj', '不情願的、勉強的', "She was reluctant to leave the fun party.", '她很不情願離開那場有趣的派對。', 'daily', 2),
-  mkWord('word-demo-3', 'commute', '/kəˈmjuːt/', 'verb', '通勤', 'I commute to work by train every morning.', '我每天早上搭火車通勤上班。', 'work', 1),
-  mkWord('word-demo-4', 'itinerary', '/aɪˈtɪnərəri/', 'noun', '行程表、旅程安排', 'We planned the itinerary for our Paris trip.', '我們規劃了巴黎之旅的行程表。', 'travel', 1),
-  mkWord('word-demo-5', 'procrastinate', '/proʊˈkræstəˌneɪt/', 'verb', '拖延、耽擱', 'Stop procrastinating and start studying now.', '別再拖延了，現在就開始念書。', 'exam', 1, true),
-  mkWord('word-demo-6', 'negotiate', '/nɪˈɡoʊʃieɪt/', 'verb', '談判、協商', 'They negotiated a better price at the market.', '他們在市場上殺到了更好的價錢。', 'travel', 2),
-  mkWord('word-demo-7', 'aesthetic', '/esˈθetɪk/', 'adj', '美感的、美學的', 'The bridge has great aesthetic value.', '這座橋具有很高的美感價值。', 'academic', 1),
-  mkWord('word-demo-8', 'bargain', '/ˈbɑːrɡɪn/', 'noun', '便宜貨、划算的東西', 'These sneakers were a real bargain.', '這雙運動鞋真是超值便宜貨。', 'daily', 3, true),
-  mkWord('word-demo-9', 'peruse', '/pərˈuːz/', 'verb', '細讀、審閱', 'You may peruse the report before the meeting.', '你可以在會議前仔細審閱這份報告。', 'work', 1),
+  mkWord('word-demo-3', 'commute', '/kəˈmjut/', 'verb', '通勤', 'I commute to work by train every morning.', '我每天早上搭火車通勤上班。', 'work', 1),
+  mkWord('word-demo-4', 'itinerary', '/aɪˈtɪnərɛri/', 'noun', '行程表、旅程安排', 'We planned the itinerary for our Paris trip.', '我們規劃了巴黎之旅的行程表。', 'travel', 1),
+  mkWord('word-demo-5', 'procrastinate', '/proˈkræstəˌnet/', 'verb', '拖延、耽擱', 'Stop procrastinating and start studying now.', '別再拖延了，現在就開始念書。', 'exam', 1, true),
+  mkWord('word-demo-6', 'negotiate', '/nɪˈɡoʃiˌet/', 'verb', '談判、協商', 'They negotiated a better price at the market.', '他們在市場上殺到了更好的價錢。', 'travel', 2),
+  mkWord('word-demo-7', 'aesthetic', '/ɛsˈθɛtɪk/', 'adj', '美感的、美學的', 'The bridge has great aesthetic value.', '這座橋具有很高的美感價值。', 'academic', 1),
+  mkWord('word-demo-8', 'bargain', '/ˈbɑrɡɪn/', 'noun', '便宜貨、划算的東西', 'These sneakers were a real bargain.', '這雙運動鞋真是超值便宜貨。', 'daily', 3, true),
+  mkWord('word-demo-9', 'peruse', '/pəˈruz/', 'verb', '細讀、審閱', 'You may peruse the report before the meeting.', '你可以在會議前仔細審閱這份報告。', 'work', 1),
   mkWord('word-demo-10', 'scrumptious', '/ˈskrʌmpʃəs/', 'adj', '美味極了的', 'The bakery sells scrumptious pastries.', '這家麵包店賣著極為美味的糕點。', 'slang', 1),
 ];
 

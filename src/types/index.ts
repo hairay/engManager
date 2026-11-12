@@ -20,7 +20,7 @@ export type PartOfSpeech =
 export interface Word {
   id: string;
   english: string;             // 英文單字或片語
-  phonetic: string;            // KK/DJ 音標
+  phonetic: string;            // KK 音標
   partOfSpeech: PartOfSpeech;
   meaning: string;             // 中文意思
   exampleSentence: string;     // 英文例句

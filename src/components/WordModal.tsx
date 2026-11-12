@@ -209,7 +209,7 @@ const WordModalContent: React.FC<Omit<WordModalProps, 'isOpen'>> = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-extrabold text-slate-800 dark:text-white mb-1.5">音標 (KK/IPA)</label>
+              <label className="block text-sm font-extrabold text-slate-800 dark:text-white mb-1.5">KK 音標</label>
               <input
                 type="text"
                 value={phonetic}
